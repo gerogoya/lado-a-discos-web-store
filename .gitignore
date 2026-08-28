@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# next
+.next/
+out/
+
+# production
+build/
+dist/
+
+# local env
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local source archives and raw imports
+*.zip
+Discos doce pulgadas-20260828T030633Z-1-001/
+Logo/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

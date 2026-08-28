@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Modelos visuales para tienda de vinilos</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f4f2ed;
+        color: #171614;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          linear-gradient(180deg, rgba(244, 242, 237, 0.96), rgba(244, 242, 237, 1)),
+          url("Discos doce pulgadas-20260828T030633Z-1-001/Discos doce pulgadas/IMG_2273.jpg");
+        background-size: cover;
+        background-attachment: fixed;
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 40px 0 56px;
+      }
+
+      header {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 26px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 6vw, 66px);
+        line-height: 0.95;
+        letter-spacing: 0;
+        max-width: 850px;
+      }
+
+      .intro {
+        max-width: 760px;
+        font-size: 18px;
+        line-height: 1.55;
+        margin: 0;
+        color: #4b4740;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .theme {
+        min-height: 500px;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        background: #fff;
+        overflow: hidden;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .bar {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        padding: 14px 16px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      }
+
+      .mock {
+        padding: 20px;
+        display: grid;
+        gap: 18px;
+        align-content: start;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .copy {
+        margin: 10px 0 16px;
+        line-height: 1.45;
+        font-size: 14px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .button,
+      .pill,
+      .filter,
+      .tag {
+        border: 1px solid currentColor;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .button {
+        font-weight: 750;
+      }
+
+      .cover {
+        min-height: 190px;
+        background-image: url("Discos doce pulgadas-20260828T030633Z-1-001/Discos doce pulgadas/IMG_2273.jpg");
+        background-size: cover;
+        background-position: center;
+        border: 1px solid rgba(0, 0, 0, 0.14);
+      }
+
+      .catalog {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .record {
+        min-height: 132px;
+        padding: 10px;
+        display: grid;
+        align-content: end;
+        gap: 7px;
+        border: 1px solid rgba(0, 0, 0, 0.13);
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .record strong {
+        font-size: 13px;
+        line-height: 1.16;
+      }
+
+      .record span {
+        font-size: 12px;
+        color: inherit;
+        opacity: 0.72;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .theme-a {
+        background: #faf7f0;
+        color: #181716;
+      }
+
+      .theme-a .bar {
+        background: #151515;
+        color: #f7efe3;
+      }
+
+      .theme-a .button {
+        background: #8e1f2f;
+        color: #fff;
+        border-color: #8e1f2f;
+      }
+
+      .theme-a .pill {
+        color: #0f615b;
+      }
+
+      .theme-b {
+        background: #f7f7f5;
+        color: #141414;
+      }
+
+      .theme-b .mock {
+        gap: 12px;
+      }
+
+      .theme-b .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .theme-b .catalog {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .theme-b .record {
+        min-height: 92px;
+        background: #fff;
+      }
+
+      .theme-b .button {
+        background: #202020;
+        color: #fff;
+      }
+
+      .theme-c {
+        background: #fff8db;
+        color: #171313;
+      }
+
+      .theme-c .bar {
+        background: #00a6a6;
+        color: #061515;
+      }
+
+      .theme-c .button {
+        background: #e83f2f;
+        color: #fff;
+      }
+
+      .theme-c .record {
+        background: #f9d44a;
+        box-shadow: 6px 6px 0 #171313;
+      }
+
+      .theme-d {
+        background: #151619;
+        color: #f5f2ea;
+      }
+
+      .theme-d .bar {
+        border-color: rgba(255, 255, 255, 0.18);
+      }
+
+      .theme-d .record {
+        background: #22252b;
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+
+      .theme-d .cover {
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .theme-d .button {
+        background: #f2c94c;
+        color: #151619;
+      }
+
+      @media (max-width: 820px) {
+        .grid,
+        .hero {
+          grid-template-columns: 1fr;
+        }
+
+        .catalog {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .theme {
+          min-height: auto;
+        }
+      }
+
+      @media (max-width: 520px) {
+        main {
+          width: min(100vw - 20px, 1180px);
+          padding-top: 24px;
+        }
+
+        .mock {
+          padding: 14px;
+        }
+
+        .catalog,
+        .theme-b .catalog {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Modelos visuales para la tienda de vinilos</h1>
+        <p class="intro">
+          Estas son direcciones de UI para decidir el estilo antes de desarrollar. Usan una foto real del catalogo inicial como senal visual, pero no son todavia la implementacion del ecommerce.
+        </p>
+      </header>
+
+      <section class="grid" aria-label="Modelos visuales">
+        <article class="theme theme-a">
+          <div class="bar">
+            <span>Modelo A</span>
+            <span>Premium local</span>
+          </div>
+          <div class="mock">
+            <div class="hero">
+              <div>
+                <h2>Vinilos usados, probados y clasificados.</h2>
+                <p class="copy">Catalogo curado con fotos reales, estado informado y envios a todo el pais.</p>
+                <div class="actions">
+                  <span class="button">Ver catalogo</span>
+                  <span class="pill">Nuevos ingresos</span>
+                </div>
+              </div>
+              <div class="cover" role="img" aria-label="Foto de disco de vinilo"></div>
+            </div>
+            <div class="catalog">
+              <div class="record"><strong>Rick Wakeman</strong><span>VG+/VG · $42.000</span></div>
+              <div class="record"><strong>Rock nacional</strong><span>Usado · probado</span></div>
+              <div class="record"><strong>Jazz importado</strong><span>Ultima unidad</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="theme theme-b">
+          <div class="bar">
+            <span>Modelo B</span>
+            <span>Coleccionista</span>
+          </div>
+          <div class="mock">
+            <div class="hero">
+              <div>
+                <h2>Catalogo rapido para buscar, filtrar y comparar.</h2>
+                <p class="copy">Mas denso, menos editorial. Pensado para usuarios que revisan condicion, origen, ano y precio.</p>
+                <div class="filters">
+                  <span class="filter">Genero</span>
+                  <span class="filter">Estado</span>
+                  <span class="filter">Decada</span>
+                  <span class="filter">Precio</span>
+                  <span class="filter">Origen</span>
+                </div>
+              </div>
+            </div>
+            <div class="catalog">
+              <div class="record"><strong>Artista - Album</strong><span>ARG · 1978 · VG+/EX · $58.000</span></div>
+              <div class="record"><strong>Artista - Album</strong><span>USA · 1982 · NM/VG+ · $94.000</span></div>
+              <div class="record"><strong>Artista - Album</strong><span>BR · 1974 · VG/VG · $46.000</span></div>
+              <div class="record"><strong>Artista - Album</strong><span>Nuevo · sellado · $72.000</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="theme theme-c">
+          <div class="bar">
+            <span>Modelo C</span>
+            <span>Retro moderno</span>
+          </div>
+          <div class="mock">
+            <div class="hero">
+              <div>
+                <h2>Nuevos ingresos, rarezas y discos con historia.</h2>
+                <p class="copy">Mas expresivo y memorable. Bueno para redes, lanzamientos semanales y colecciones con personalidad.</p>
+                <div class="actions">
+                  <span class="button">Rarezas</span>
+                  <span class="pill">Rock argentino</span>
+                </div>
+              </div>
+              <div class="cover" role="img" aria-label="Foto de disco de vinilo"></div>
+            </div>
+            <div class="catalog">
+              <div class="record"><strong>Nuevo ingreso</strong><span>12 pulgadas</span></div>
+              <div class="record"><strong>Oferta semanal</strong><span>Transferencia</span></div>
+              <div class="record"><strong>Seleccion local</strong><span>Buenos Aires</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="theme theme-d">
+          <div class="bar">
+            <span>Modelo D</span>
+            <span>Minimal oscuro</span>
+          </div>
+          <div class="mock">
+            <div class="hero">
+              <div>
+                <h2>Discos destacados como piezas de coleccion.</h2>
+                <p class="copy">Mas sobrio y premium. Conviene para rarezas, importados y productos caros, cuidando siempre la legibilidad.</p>
+                <div class="actions">
+                  <span class="button">Comprar</span>
+                  <span class="pill">VG+/EX</span>
+                </div>
+              </div>
+              <div class="cover" role="img" aria-label="Foto de disco de vinilo"></div>
+            </div>
+            <div class="catalog">
+              <div class="record"><strong>Rareza ARG</strong><span>Probado · sin saltos</span></div>
+              <div class="record"><strong>Importado USA</strong><span>Ultima unidad</span></div>
+              <div class="record"><strong>Nuevo sellado</strong><span>Mercado Pago</span></div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
