@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Lock, PackageCheck, Save, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { publicAsset } from "@/lib/assets";
 import { formatCurrency } from "@/lib/format";
 import { products } from "@/lib/products";
 import { storeConfig } from "@/lib/store-config";
@@ -62,7 +63,7 @@ export default function AdminPage() {
     return (
       <main className="admin-login">
         <form className="login-card" onSubmit={submitLogin}>
-          <Image src="/brand/lado-a-discos-logo.jpg" alt="LADO A DISCOS" width={88} height={88} priority />
+          <Image src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={88} height={88} priority />
           <div>
             <p className="eyebrow">Admin mock</p>
             <h1>Ingresar a LADO A DISCOS</h1>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { publicAsset } from "@/lib/assets";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
 import type { Product, ProductStatus } from "@/types/product";
@@ -64,7 +65,7 @@ export function ProductDetail({ product }: { product: Product }) {
     <main className="site-shell product-page">
       <header className="topbar compact">
         <Link className="brand" href="/">
-          <Image src="/brand/lado-a-discos-logo.jpg" alt="LADO A DISCOS" width={52} height={52} priority />
+          <Image src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={52} height={52} priority />
           <span>LADO A DISCOS</span>
         </Link>
         <Link className="back-link" href="/">

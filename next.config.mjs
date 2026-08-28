@@ -12,6 +12,9 @@ const nextConfig = {
   trailingSlash: true,
   basePath: isGitHubPages ? `/${repoName}` : undefined,
   assetPrefix: isGitHubPages ? `/${repoName}/` : undefined,
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isGitHubPages ? `/${repoName}` : ""
+  },
   outputFileTracingRoot: __dirname,
   images: {
     unoptimized: true

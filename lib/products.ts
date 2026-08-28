@@ -1,4 +1,5 @@
 import type { Product, ProductCondition } from "@/types/product";
+import { publicAsset } from "@/lib/assets";
 
 const imageFiles = [
   "61953720-A4B9-4066-886F-3A43CE46E222.JPG",
@@ -76,7 +77,7 @@ export const products: Product[] = imageFiles.map((file, index) => {
     genre: genres[index % genres.length],
     year: 1970 + (index % 25),
     country: countries[index % countries.length],
-    photos: [`/products/${file}`],
+    photos: [publicAsset(`/products/${file}`)],
     stock: 1,
     status: "published",
     isNew,

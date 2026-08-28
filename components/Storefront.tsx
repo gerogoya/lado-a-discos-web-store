@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle, Minus, Plus, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
+import { MessageCircle, Minus, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { publicAsset } from "@/lib/assets";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
 import { genresForFilters, products } from "@/lib/products";
@@ -110,7 +111,7 @@ export function Storefront() {
     <main className="site-shell">
       <header className="topbar">
         <Link className="brand" href="/" aria-label="Ir al inicio">
-          <Image src="/brand/lado-a-discos-logo.jpg" alt="LADO A DISCOS" width={56} height={56} priority />
+          <Image src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={56} height={56} priority />
           <span>LADO A DISCOS</span>
         </Link>
 
