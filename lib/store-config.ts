@@ -5,6 +5,7 @@ export const storeConfig = {
   defaultCity: "Buenos Aires",
   cartStorageKey: "lado-a-discos-cart",
   inventoryStorageKey: "lado-a-discos-inventory-status",
+  productOverridesStorageKey: "lado-a-discos-product-overrides",
   adminStorageKey: "lado-a-discos-admin-session"
 };
 

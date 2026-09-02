@@ -1,7 +1,9 @@
-export function formatCurrency(value: number) {
+import type { ProductCurrency } from "@/types/product";
+
+export function formatCurrency(value: number, currency: ProductCurrency = "ARS") {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
-    currency: "ARS",
+    currency,
     maximumFractionDigits: 0
   }).format(value);
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ProductImage } from "@/components/ProductImage";
 import { publicAsset } from "@/lib/assets";
+import { readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
 import type { Product, ProductStatus } from "@/types/product";
@@ -14,23 +15,32 @@ type CartItem = {
   quantity: number;
 };
 
-export function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({ product: initialProduct }: { product: Product }) {
+  const [product, setProduct] = useState<Product>(initialProduct);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [status, setStatus] = useState<ProductStatus>(product.status);
+  const [status, setStatus] = useState<ProductStatus>(initialProduct.status);
 
   useEffect(() => {
     const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
     const savedInventory = window.localStorage.getItem(storeConfig.inventoryStorageKey);
+    const productOverrides = readProductOverrides();
+    const savedProduct = productOverrides[initialProduct.id];
 
     if (savedCart) {
       setCart(JSON.parse(savedCart) as CartItem[]);
     }
 
+    if (savedProduct) {
+      setProduct(savedProduct);
+    }
+
     if (savedInventory) {
       const inventory = JSON.parse(savedInventory) as Record<string, ProductStatus>;
-      setStatus(inventory[product.id] ?? product.status);
+      setStatus(savedProduct?.status ?? inventory[initialProduct.id] ?? initialProduct.status);
+    } else {
+      setStatus(savedProduct?.status ?? initialProduct.status);
     }
-  }, [product.id, product.status]);
+  }, [initialProduct]);
 
   useEffect(() => {
     window.localStorage.setItem(storeConfig.cartStorageKey, JSON.stringify(cart));
@@ -44,7 +54,8 @@ export function ProductDetail({ product }: { product: Product }) {
         "Hola LADO A DISCOS, quiero consultar por este disco:",
         "",
         `${product.artist} - ${product.title}`,
-        `Precio: ${formatCurrency(product.price)}`,
+        `Album: ${product.album}`,
+        `Precio: ${formatCurrency(product.price, product.currency)}`,
         `Estado: disco ${product.mediaCondition}, tapa ${product.sleeveCondition}`,
         `Link/producto: ${product.slug}`
       ].join("\n")
@@ -65,7 +76,7 @@ export function ProductDetail({ product }: { product: Product }) {
     <main className="site-shell product-page">
       <header className="topbar compact">
         <Link className="brand" href="/">
-          <Image src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={52} height={52} priority />
+          <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={52} height={52} priority />
           <span>LADO A DISCOS</span>
         </Link>
         <Link className="back-link" href="/">
@@ -77,7 +88,7 @@ export function ProductDetail({ product }: { product: Product }) {
       <section className="product-detail-grid">
         <div className="detail-gallery">
           {product.photos.map((photo) => (
-            <Image key={photo} src={photo} alt={`${product.artist} - ${product.title}`} width={900} height={900} priority />
+            <ProductImage key={photo} src={photo} alt={`${product.artist} - ${product.title}`} width={900} height={900} priority />
           ))}
         </div>
 
@@ -85,9 +96,10 @@ export function ProductDetail({ product }: { product: Product }) {
           <p className="eyebrow">{product.genre} · {product.country} · {product.year}</p>
           <h1>{product.title}</h1>
           <p className="detail-artist">{product.artist}</p>
-          <strong className="detail-price">{formatCurrency(product.price)}</strong>
+          <strong className="detail-price">{formatCurrency(product.price, product.currency)}</strong>
 
           <div className="detail-status-grid">
+            <span>Album <strong>{product.album}</strong></span>
             <span>Disco <strong>{product.mediaCondition}</strong></span>
             <span>Tapa <strong>{product.sleeveCondition}</strong></span>
             <span>Stock <strong>{product.stock}</strong></span>
