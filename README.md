@@ -8,30 +8,28 @@ Sitio inicial para venta de discos de vinilo usados y nuevos en Argentina.
 - React
 - TypeScript
 - CSS custom properties
-- Datos mock locales
+- Supabase para productos, imagenes y admin auth
 - Carrito con pedido por WhatsApp
 
 ## Funcionalidad actual
 
-- Catalogo con 53 productos mock generados desde fotos locales.
+- Catalogo con productos cargados desde Supabase y fallback local.
 - Busqueda y filtros por genero.
 - Pagina de detalle por producto.
 - Carrito persistente en el navegador.
 - Pedido por WhatsApp con resumen del carrito.
-- Admin con login local de Supabase.
-- Admin local para editar estado, precio, titulo, artista, album, anio, genero y moneda.
-- Alta local de nuevos discos con imagenes.
+- Admin con login de Supabase Auth.
+- Admin para editar estado, precio, titulo, artista, album, descripcion, anio, genero y moneda.
+- Alta de nuevos discos con imagenes en Supabase Storage.
 
-## Sprint 1 local
+## Sprint 1
 
-El repo sigue trabajando sin base de datos externa. Los cambios del admin se guardan en `localStorage`, por lo que sirven para validar el flujo desde este equipo antes de conectar un backend real.
+El admin usa Supabase para persistir productos e imagenes. En desarrollo local puede usarse Supabase CLI; en GitHub Pages se usa Supabase Cloud mediante variables publicas de GitHub Actions.
 
 Limitaciones de esta etapa:
 
-- El login demo no es seguridad real.
-- Las imagenes cargadas desde el admin se guardan localmente en el navegador.
-- Los discos nuevos aparecen en el catalogo local, pero no generan paginas de detalle estaticas para GitHub Pages.
-- Para persistencia real, el siguiente paso recomendado es Supabase Postgres para productos y Supabase Storage para imagenes.
+- GitHub Pages es hosting estatico. El catalogo y admin pueden leer/escribir en Supabase desde el navegador, pero las paginas de detalle nuevas no se generan automaticamente hasta un nuevo deploy estatico.
+- La autorizacion fina del admin todavia depende de endurecer policies/roles antes de produccion real.
 
 ## Ejecutar localmente
 
@@ -70,10 +68,28 @@ Para cargar los productos iniciales y subir las imagenes locales a Supabase Stor
 npm run db:seed:products
 ```
 
+## GitHub Pages con Supabase Cloud
+
+En GitHub, configurar estas repository variables en `Settings > Secrets and variables > Actions > Variables`:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
+
+`NEXT_PUBLIC_SUPABASE_URL` debe usar la URL base del proyecto, por ejemplo:
+
+```text
+https://ejqedephjqzusvkompeg.supabase.co
+```
+
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` debe usar la key publica que empieza con `sb_publishable_`.
+
+No subir `SUPABASE_SERVICE_ROLE_KEY` a GitHub Pages.
+
 ## Proximas etapas
 
 - Reemplazar datos genericos por informacion real de cada disco.
-- Mover productos e imagenes del mock local a una base real cuando el flujo este validado.
-- Conectar Supabase para autenticacion, productos y storage.
+- Evaluar Vercel/Netlify si se necesitan paginas de detalle dinamicas para discos nuevos sin redeploy.
 - Agregar ordenes y reserva real de stock.
 - Integrar Mercado Pago cuando el flujo de compra este estable.
