@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProductDetail } from "@/components/ProductDetail";
 import { getProductBySlug, products } from "@/lib/products";
+import { getProductBySlugFromSupabase } from "@/lib/supabase/products";
 
 type PageProps = {
   params: Promise<{
@@ -16,7 +17,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = getProductBySlug(slug) ?? (await getProductBySlugFromSupabase(slug));
 
   if (!product) {
     return {};
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = getProductBySlug(slug) ?? (await getProductBySlugFromSupabase(slug));
 
   if (!product) {
     notFound();

@@ -70,5 +70,5 @@ export function createSlug(value: string) {
 }
 
 export function isCustomProduct(productId: string) {
-  return !staticProductIds.has(productId);
+  return productId.startsWith("custom-");
 }

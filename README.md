@@ -18,7 +18,7 @@ Sitio inicial para venta de discos de vinilo usados y nuevos en Argentina.
 - Pagina de detalle por producto.
 - Carrito persistente en el navegador.
 - Pedido por WhatsApp con resumen del carrito.
-- Admin mock con login local.
+- Admin con login local de Supabase.
 - Admin local para editar estado, precio, titulo, artista, album, anio, genero y moneda.
 - Alta local de nuevos discos con imagenes.
 
@@ -52,10 +52,22 @@ Admin:
 http://127.0.0.1:3000/admin
 ```
 
-Password demo:
+El admin usa un usuario local de Supabase Auth.
 
-```text
-ladoa-demo
+## Supabase local
+
+Crear `.env.local` desde `.env.example` y completar los valores locales de Supabase:
+
+```bash
+npx supabase status
+```
+
+Usar `Project URL` como `NEXT_PUBLIC_SUPABASE_URL` y `Publishable` como `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+
+Para cargar los productos iniciales y subir las imagenes locales a Supabase Storage, completar tambien `SUPABASE_SERVICE_ROLE_KEY` en `.env.local` con la key `SERVICE_ROLE_KEY` local y ejecutar:
+
+```bash
+npm run db:seed:products
 ```
 
 ## Proximas etapas

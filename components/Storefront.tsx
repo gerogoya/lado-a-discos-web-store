@@ -9,6 +9,7 @@ import { buildClientProducts, isCustomProduct, readLegacyInventory, readProductO
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
 import { products } from "@/lib/products";
+import { listProductsFromSupabase } from "@/lib/supabase/products";
 import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
 type CartItem = {
@@ -22,15 +23,37 @@ export function Storefront() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(products);
+  const [catalogSource, setCatalogSource] = useState("Catalogo local");
 
   useEffect(() => {
+    let cancelled = false;
     const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
+    const localProducts = buildClientProducts(readProductOverrides(), readLegacyInventory());
 
     if (savedCart) {
       setCart(JSON.parse(savedCart) as CartItem[]);
     }
 
-    setCatalogProducts(buildClientProducts(readProductOverrides(), readLegacyInventory()));
+    setCatalogProducts(localProducts);
+
+    async function loadSupabaseProducts() {
+      try {
+        const supabaseProducts = await listProductsFromSupabase();
+
+        if (!cancelled && supabaseProducts.length) {
+          setCatalogProducts(supabaseProducts);
+          setCatalogSource("Supabase local");
+        }
+      } catch (error) {
+        console.warn("Using local catalog fallback.", error);
+      }
+    }
+
+    loadSupabaseProducts();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -212,7 +235,7 @@ export function Storefront() {
               <p className="eyebrow">Catalogo inicial</p>
               <h2>{visibleProducts.length} discos publicados</h2>
             </div>
-            <span>Mock desde tus fotos locales</span>
+            <span>{catalogSource}</span>
           </div>
 
           <div className="product-grid">

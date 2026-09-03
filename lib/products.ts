@@ -72,6 +72,7 @@ export const products: Product[] = imageFiles.map((file, index) => {
     artist: itemNumber === 2 ? "Rick Wakeman" : "Artista por completar",
     title: itemNumber === 2 ? "Mitos y leyendas del Rey Arturo" : `Vinilo 12 pulgadas #${String(itemNumber).padStart(2, "0")}`,
     album: itemNumber === 2 ? "Mitos y leyendas del Rey Arturo" : "Album por completar",
+    description: "",
     price: 26000 + itemNumber * 1400,
     currency: "ARS",
     mediaCondition: isNew ? "M" : mediaConditions[index % mediaConditions.length],

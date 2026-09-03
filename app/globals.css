@@ -851,6 +851,18 @@ p {
   margin-top: 16px;
 }
 
+.admin-message {
+  margin: 0 0 16px;
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.admin-message.error {
+  margin: 0;
+  color: #e3a399;
+}
+
 .admin-search {
   margin-bottom: 16px;
 }
@@ -909,6 +921,7 @@ p {
 }
 
 .admin-field input,
+.admin-field textarea,
 .admin-field select {
   width: 100%;
   min-height: 42px;
@@ -921,8 +934,19 @@ p {
 }
 
 .admin-field input:focus,
+.admin-field textarea:focus,
 .admin-field select:focus {
   border-color: rgba(222, 208, 180, 0.48);
+}
+
+.admin-field textarea {
+  min-height: 86px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.admin-field-wide {
+  grid-column: span 3;
 }
 
 .image-upload-field {
@@ -931,6 +955,20 @@ p {
 
 .image-upload-field input {
   padding: 9px 12px;
+}
+
+.admin-save-button {
+  min-height: 42px;
+  align-self: end;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--paper);
+  color: #181511;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 900;
 }
 
 @media (max-width: 1120px) {
@@ -1004,6 +1042,10 @@ p {
   }
 
   .image-upload-field {
+    grid-column: auto;
+  }
+
+  .admin-field-wide {
     grid-column: auto;
   }
 }

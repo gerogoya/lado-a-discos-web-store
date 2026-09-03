@@ -10,6 +10,7 @@ export type Product = {
   artist: string;
   title: string;
   album: string;
+  description: string;
   price: number;
   currency: ProductCurrency;
   mediaCondition: ProductCondition;

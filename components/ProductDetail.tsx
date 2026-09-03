@@ -8,6 +8,7 @@ import { publicAsset } from "@/lib/assets";
 import { readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
+import { getProductBySlugFromSupabase } from "@/lib/supabase/products";
 import type { Product, ProductStatus } from "@/types/product";
 
 type CartItem = {
@@ -21,6 +22,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
   const [status, setStatus] = useState<ProductStatus>(initialProduct.status);
 
   useEffect(() => {
+    let cancelled = false;
     const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
     const savedInventory = window.localStorage.getItem(storeConfig.inventoryStorageKey);
     const productOverrides = readProductOverrides();
@@ -40,6 +42,25 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
     } else {
       setStatus(savedProduct?.status ?? initialProduct.status);
     }
+
+    async function loadSupabaseProduct() {
+      try {
+        const supabaseProduct = await getProductBySlugFromSupabase(initialProduct.slug);
+
+        if (!cancelled && supabaseProduct) {
+          setProduct(supabaseProduct);
+          setStatus(supabaseProduct.status);
+        }
+      } catch (error) {
+        console.warn("Using local product detail fallback.", error);
+      }
+    }
+
+    loadSupabaseProduct();
+
+    return () => {
+      cancelled = true;
+    };
   }, [initialProduct]);
 
   useEffect(() => {
@@ -87,7 +108,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
 
       <section className="product-detail-grid">
         <div className="detail-gallery">
-          {product.photos.map((photo) => (
+          {(product.photos.length ? product.photos : [publicAsset("/brand/lado-a-discos-logo.jpg")]).map((photo) => (
             <ProductImage key={photo} src={photo} alt={`${product.artist} - ${product.title}`} width={900} height={900} priority />
           ))}
         </div>
@@ -107,8 +128,8 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
           </div>
 
           <p className="detail-copy">
-            Publicacion mock creada desde foto local. En el backend real este espacio mostrara descripcion,
-            notas de condicion, sello, numero de catalogo y detalles de reproduccion.
+            {product.description ||
+              "Publicacion mock creada desde foto local. En el backend real este espacio mostrara descripcion, notas de condicion, sello, numero de catalogo y detalles de reproduccion."}
           </p>
 
           <div className="detail-actions">
