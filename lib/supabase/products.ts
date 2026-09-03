@@ -167,6 +167,53 @@ export async function uploadProductImageToSupabase({
   return mapProductImageRecord(data);
 }
 
+export async function replaceProductImagesInSupabase({ productId, files }: { productId: string; files: File[] }) {
+  if (!files.length) {
+    return [];
+  }
+
+  const supabase = createSupabaseBrowserClient();
+  const { data: existingImages, error: existingImagesError } = await supabase
+    .from("product_images")
+    .select("*")
+    .eq("product_id", productId);
+
+  if (existingImagesError) {
+    throw existingImagesError;
+  }
+
+  const uploadedImages = await Promise.all(
+    files.map((file, index) =>
+      uploadProductImageToSupabase({
+        productId,
+        file,
+        sortOrder: index
+      })
+    )
+  );
+  const existingImageRows = (existingImages ?? []) as ProductImageRow[];
+  const existingImageIds = existingImageRows.map((image) => image.id);
+  const existingStoragePaths = existingImageRows.map((image) => image.storage_path);
+
+  if (existingImageIds.length) {
+    const { error: deleteError } = await supabase.from("product_images").delete().in("id", existingImageIds);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+  }
+
+  if (existingStoragePaths.length) {
+    const { error: removeStorageError } = await supabase.storage.from(productImageBucket).remove(existingStoragePaths);
+
+    if (removeStorageError) {
+      console.warn("Could not remove replaced product image files.", removeStorageError);
+    }
+  }
+
+  return uploadedImages;
+}
+
 export async function replaceProductIdentifiersInSupabase(productId: string, identifiers: ProductIdentifierInsert[]) {
   const supabase = createSupabaseBrowserClient();
   const { error: deleteError } = await supabase.from("product_identifiers").delete().eq("product_id", productId);

@@ -52,6 +52,12 @@ http://127.0.0.1:3000/admin
 
 El admin usa un usuario local de Supabase Auth.
 
+Aceptacion de invitaciones admin:
+
+```text
+http://127.0.0.1:3000/admin/accept-invite
+```
+
 ## Supabase local
 
 Crear `.env.local` desde `.env.example` y completar los valores locales de Supabase:
@@ -86,6 +92,21 @@ https://ejqedephjqzusvkompeg.supabase.co
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` debe usar la key publica que empieza con `sb_publishable_`.
 
 No subir `SUPABASE_SERVICE_ROLE_KEY` a GitHub Pages.
+
+Configurar tambien `Authentication > URL Configuration` en Supabase:
+
+```text
+Site URL:
+https://gerogoya.github.io/lado-a-discos-web-store/admin/accept-invite
+
+Redirect URLs:
+https://gerogoya.github.io/lado-a-discos-web-store/**
+https://gerogoya.github.io/lado-a-discos-web-store/admin/accept-invite
+http://localhost:3000/**
+http://127.0.0.1:3000/**
+```
+
+El invite de Supabase confirma el usuario de esta app y redirige a `admin/accept-invite` para crear la contrasena. No debe redirigir al dashboard de Supabase.
 
 ## Proximas etapas
 

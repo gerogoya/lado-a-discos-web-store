@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ImagePlus, Lock, PackageCheck, Plus, Save, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertCircle, CheckCircle2, ImagePlus, Lock, PackageCheck, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
 import { publicAsset } from "@/lib/assets";
 import {
@@ -17,7 +17,9 @@ import { storeConfig } from "@/lib/store-config";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   createProductInSupabase,
+  deleteProductFromSupabase,
   listProductsFromSupabase,
+  replaceProductImagesInSupabase,
   updateProductInSupabase,
   uploadProductImageToSupabase,
   type ProductEditorInput
@@ -25,6 +27,12 @@ import {
 import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
 type ProductFormState = Omit<Product, "id" | "slug">;
+type AdminToast = {
+  id: number;
+  type: "success" | "error";
+  title: string;
+  message: string;
+};
 
 const emptyProductForm: ProductFormState = {
   artist: "",
@@ -52,14 +60,18 @@ export default function AdminPage() {
   const [query, setQuery] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [adminSource, setAdminSource] = useState("Catalogo local");
-  const [adminMessage, setAdminMessage] = useState("");
   const [loginError, setLoginError] = useState("");
   const [savingProductId, setSavingProductId] = useState<string | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [toast, setToast] = useState<AdminToast | null>(null);
   const [editableProducts, setEditableProducts] = useState<Product[]>([]);
   const [productOverrides, setProductOverrides] = useState<Record<string, Product>>({});
+  const [pendingProductImageFiles, setPendingProductImageFiles] = useState<Record<string, File[]>>({});
   const [newProduct, setNewProduct] = useState<ProductFormState>(emptyProductForm);
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
+  const pendingProductImageFilesRef = useRef<Record<string, File[]>>({});
+  const newProductImageFilesRef = useRef<File[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +127,18 @@ export default function AdminPage() {
       saveProductOverrides(productOverrides);
     }
   }, [hydrated, productOverrides]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null);
+    }, toast.type === "error" ? 8000 : 4200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
 
   useEffect(() => {
     if (!loggedIn) {
@@ -182,17 +206,12 @@ export default function AdminPage() {
     }
   }
 
-  function saveProductLocally(product: Product) {
-    setProductOverrides((currentProducts) => ({
-      ...currentProducts,
-      [product.id]: product
-    }));
-    setEditableProducts((currentProducts) => {
-      if (currentProducts.some((currentProduct) => currentProduct.id === product.id)) {
-        return currentProducts.map((currentProduct) => (currentProduct.id === product.id ? product : currentProduct));
-      }
-
-      return [product, ...currentProducts];
+  function showToast(type: AdminToast["type"], title: string, message: string) {
+    setToast({
+      id: Date.now(),
+      type,
+      title,
+      message
     });
   }
 
@@ -209,52 +228,129 @@ export default function AdminPage() {
 
   async function saveExistingProduct(product: Product) {
     setSavingProductId(product.id);
-    setAdminMessage("");
 
     try {
       const savedProduct = await updateProductInSupabase(product.id, toProductEditorInput(product));
+      const pendingImageFiles = pendingProductImageFilesRef.current[product.id] ?? pendingProductImageFiles[product.id] ?? [];
+      const uploadedImages = await replaceProductImagesInSupabase({
+        productId: savedProduct.id,
+        files: pendingImageFiles
+      });
+      const productWithImages = uploadedImages.length
+        ? {
+            ...savedProduct,
+            photos: uploadedImages.map((image) => image.publicUrl),
+            images: uploadedImages
+          }
+        : savedProduct;
 
       setEditableProducts((currentProducts) =>
-        currentProducts.map((currentProduct) => (currentProduct.id === product.id ? savedProduct : currentProduct))
+        currentProducts.map((currentProduct) => (currentProduct.id === product.id ? productWithImages : currentProduct))
       );
       setProductOverrides((currentProducts) => {
         const nextProducts = { ...currentProducts };
         delete nextProducts[product.id];
         return nextProducts;
       });
+      setPendingProductImageFiles((currentFiles) => {
+        const nextFiles = { ...currentFiles };
+        delete nextFiles[product.id];
+        pendingProductImageFilesRef.current = nextFiles;
+        return nextFiles;
+      });
       setAdminSource("Supabase local");
-      setAdminMessage(`Guardado: ${savedProduct.artist} - ${savedProduct.title}`);
+      showToast(
+        "success",
+        "Cambios guardados",
+        uploadedImages.length
+          ? `${productWithImages.artist} - ${productWithImages.title} con imagen actualizada`
+          : `${productWithImages.artist} - ${productWithImages.title}`
+      );
     } catch (error) {
-      setAdminMessage(error instanceof Error ? error.message : "No se pudo guardar el producto.");
+      showToast("error", "No se pudo guardar", getErrorMessage(error, "No se pudo guardar el producto."));
     } finally {
       setSavingProductId(null);
     }
   }
 
-  async function updateProductImages(product: Product, fileList: FileList | null) {
-    const photos = await readImageFiles(fileList);
+  async function deleteProduct(product: Product) {
+    if (!window.confirm(`Eliminar "${product.artist} - ${product.title}" del catalogo?`)) {
+      return;
+    }
 
-    if (photos.length) {
-      updateProduct(product, { photos });
+    setDeletingProductId(product.id);
+
+    try {
+      await deleteProductFromSupabase(product.id);
+      setEditableProducts((currentProducts) => currentProducts.filter((currentProduct) => currentProduct.id !== product.id));
+      setProductOverrides((currentProducts) => {
+        const nextProducts = { ...currentProducts };
+        delete nextProducts[product.id];
+        return nextProducts;
+      });
+      setAdminSource("Supabase local");
+      showToast("success", "Disco eliminado", `${product.artist} - ${product.title}`);
+    } catch (error) {
+      showToast("error", "No se pudo eliminar", getErrorMessage(error, "No se pudo eliminar el producto."));
+    } finally {
+      setDeletingProductId(null);
+    }
+  }
+
+  async function updateProductImages(product: Product, fileList: FileList | null) {
+    const files = fileList ? Array.from(fileList) : [];
+    const nextPendingImageFiles = {
+      ...pendingProductImageFilesRef.current,
+      [product.id]: files
+    };
+
+    pendingProductImageFilesRef.current = nextPendingImageFiles;
+    setPendingProductImageFiles(nextPendingImageFiles);
+
+    try {
+      const photos = await readImageFiles(files);
+
+      if (photos.length) {
+        updateProduct(product, { photos });
+        showToast("success", "Imagen preparada", "Presiona Guardar para subirla a Supabase.");
+      }
+    } catch (error) {
+      setPendingProductImageFiles((currentFiles) => {
+        const nextFiles = { ...currentFiles };
+        delete nextFiles[product.id];
+        pendingProductImageFilesRef.current = nextFiles;
+        return nextFiles;
+      });
+      showToast("error", "No se pudo leer la imagen", getErrorMessage(error, "No se pudo leer la imagen seleccionada."));
     }
   }
 
   async function updateNewProductImages(fileList: FileList | null) {
-    setNewProductImageFiles(fileList ? Array.from(fileList) : []);
-    const photos = await readImageFiles(fileList);
+    const files = fileList ? Array.from(fileList) : [];
 
-    if (photos.length) {
-      setNewProduct((currentProduct) => ({
-        ...currentProduct,
-        photos
-      }));
+    newProductImageFilesRef.current = files;
+    setNewProductImageFiles(files);
+
+    try {
+      const photos = await readImageFiles(files);
+
+      if (photos.length) {
+        setNewProduct((currentProduct) => ({
+          ...currentProduct,
+          photos
+        }));
+        showToast("success", "Imagen preparada", "Presiona Agregar disco para subirla a Supabase.");
+      }
+    } catch (error) {
+      newProductImageFilesRef.current = [];
+      setNewProductImageFiles([]);
+      showToast("error", "No se pudo leer la imagen", getErrorMessage(error, "No se pudo leer la imagen seleccionada."));
     }
   }
 
   async function addProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreatingProduct(true);
-    setAdminMessage("");
 
     const title = newProduct.title.trim() || "Disco sin titulo";
     const artist = newProduct.artist.trim() || "Artista por completar";
@@ -276,8 +372,9 @@ export default function AdminPage() {
 
     try {
       const savedProduct = await createProductInSupabase(toProductEditorInput(createdProduct));
+      const pendingImageFiles = newProductImageFilesRef.current.length ? newProductImageFilesRef.current : newProductImageFiles;
       const uploadedImages = await Promise.all(
-        newProductImageFiles.map((file, index) =>
+        pendingImageFiles.map((file, index) =>
           uploadProductImageToSupabase({
             productId: savedProduct.id,
             file,
@@ -295,11 +392,18 @@ export default function AdminPage() {
 
       setEditableProducts((currentProducts) => [productWithImages, ...currentProducts]);
       setAdminSource("Supabase local");
-      setAdminMessage(`Creado en Supabase: ${productWithImages.artist} - ${productWithImages.title}`);
+      showToast(
+        "success",
+        "Disco agregado",
+        uploadedImages.length
+          ? `${productWithImages.artist} - ${productWithImages.title} con imagen guardada`
+          : `${productWithImages.artist} - ${productWithImages.title}`
+      );
       setNewProduct(emptyProductForm);
+      newProductImageFilesRef.current = [];
       setNewProductImageFiles([]);
     } catch (error) {
-      setAdminMessage(error instanceof Error ? error.message : "No se pudo agregar el producto en Supabase.");
+      showToast("error", "No se pudo agregar", getErrorMessage(error, "No se pudo agregar el producto en Supabase."));
     } finally {
       setCreatingProduct(false);
     }
@@ -377,7 +481,7 @@ export default function AdminPage() {
           <span>{adminSource} · guardado en Supabase</span>
         </div>
       </section>
-      {adminMessage ? <p className="admin-message">{adminMessage}</p> : null}
+      <ToastMessage toast={toast} onClose={() => setToast(null)} />
 
       <section className="admin-create-panel" aria-label="Nuevo disco">
         <div className="admin-panel-heading">
@@ -388,6 +492,12 @@ export default function AdminPage() {
           <ImagePlus size={24} />
         </div>
         <ProductForm product={newProduct} onChange={setNewProduct} onImageChange={updateNewProductImages} />
+        {newProduct.photos[0] ? (
+          <div className="admin-new-preview">
+            <ProductImage src={newProduct.photos[0]} alt="Vista previa del disco nuevo" width={78} height={78} />
+            <span>{newProductImageFiles.length ? `${newProductImageFiles.length} imagen preparada` : "Imagen preparada"}</span>
+          </div>
+        ) : null}
         <form className="admin-create-actions" onSubmit={addProduct}>
           <button className="primary-action" type="submit" disabled={creatingProduct}>
             <Plus size={18} />
@@ -412,9 +522,11 @@ export default function AdminPage() {
             <ProductEditor
               product={product}
               saving={savingProductId === product.id}
+              deleting={deletingProductId === product.id}
               onChange={(patch) => updateProduct(product, patch)}
               onImageChange={(files) => updateProductImages(product, files)}
               onSave={() => saveExistingProduct(product)}
+              onDelete={() => deleteProduct(product)}
             />
           </article>
         ))}
@@ -426,15 +538,19 @@ export default function AdminPage() {
 function ProductEditor({
   product,
   saving,
+  deleting,
   onChange,
   onImageChange,
-  onSave
+  onSave,
+  onDelete
 }: {
   product: Product;
   saving: boolean;
+  deleting: boolean;
   onChange: (patch: Partial<Product>) => void;
   onImageChange: (files: FileList | null) => void;
   onSave: () => void;
+  onDelete: () => void;
 }) {
   return (
     <div className="admin-fields-grid">
@@ -448,9 +564,36 @@ function ProductEditor({
       <CurrencyField value={product.currency} onChange={(value) => onChange({ currency: value })} />
       <StatusField value={product.status} onChange={(value) => onChange({ status: value })} />
       <ImageField onChange={onImageChange} />
-      <button className="admin-save-button" type="button" disabled={saving} onClick={onSave}>
-        <Save size={16} />
-        {saving ? "Guardando..." : "Guardar"}
+      <div className="admin-row-actions">
+        <button className="admin-save-button" type="button" disabled={saving || deleting} onClick={onSave}>
+          <Save size={16} />
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+        <button className="admin-delete-button" type="button" disabled={saving || deleting} onClick={onDelete}>
+          <Trash2 size={16} />
+          {deleting ? "Eliminando..." : "Eliminar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ToastMessage({ toast, onClose }: { toast: AdminToast | null; onClose: () => void }) {
+  if (!toast) {
+    return null;
+  }
+
+  const Icon = toast.type === "success" ? CheckCircle2 : AlertCircle;
+
+  return (
+    <div className={`admin-toast ${toast.type}`} role="status" aria-live="polite">
+      <Icon size={20} />
+      <div>
+        <strong>{toast.title}</strong>
+        <span>{toast.message}</span>
+      </div>
+      <button type="button" onClick={onClose} aria-label="Cerrar mensaje">
+        <X size={16} />
       </button>
     </div>
   );
@@ -543,7 +686,7 @@ function ImageField({ onChange }: { onChange: (files: FileList | null) => void }
   );
 }
 
-async function readImageFiles(fileList: FileList | null) {
+async function readImageFiles(fileList: FileList | File[] | null) {
   if (!fileList) {
     return [];
   }
@@ -595,4 +738,8 @@ function toProductEditorInput(product: Product): ProductEditorInput {
     isNew: product.isNew,
     featured: Boolean(product.featured)
   };
+}
+
+function getErrorMessage(error: unknown, fallbackMessage: string) {
+  return error instanceof Error && error.message ? error.message : fallbackMessage;
 }
