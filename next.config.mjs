@@ -8,7 +8,8 @@ const repoName = "lado-a-discos-web-store";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   agentRules: false,
-  output: "export",
+  allowedDevOrigins: ["127.0.0.1"],
+  ...(isGitHubPages ? { output: "export" } : {}),
   trailingSlash: true,
   basePath: isGitHubPages ? `/${repoName}` : undefined,
   assetPrefix: isGitHubPages ? `/${repoName}/` : undefined,

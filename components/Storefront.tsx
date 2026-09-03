@@ -1,40 +1,59 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, Minus, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { ProductImage } from "@/components/ProductImage";
 import { publicAsset } from "@/lib/assets";
+import { buildClientProducts, isCustomProduct, readLegacyInventory, readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
-import { genresForFilters, products } from "@/lib/products";
-import type { Product, ProductStatus } from "@/types/product";
+import { products } from "@/lib/products";
+import { listProductsFromSupabase } from "@/lib/supabase/products";
+import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
 type CartItem = {
   productId: string;
   quantity: number;
 };
 
-type InventoryState = Record<string, ProductStatus>;
-
 export function Storefront() {
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("Todos");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [inventory, setInventory] = useState<InventoryState>({});
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>(products);
+  const [catalogSource, setCatalogSource] = useState("Catalogo local");
 
   useEffect(() => {
+    let cancelled = false;
     const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
-    const savedInventory = window.localStorage.getItem(storeConfig.inventoryStorageKey);
+    const localProducts = buildClientProducts(readProductOverrides(), readLegacyInventory());
 
     if (savedCart) {
       setCart(JSON.parse(savedCart) as CartItem[]);
     }
 
-    if (savedInventory) {
-      setInventory(JSON.parse(savedInventory) as InventoryState);
+    setCatalogProducts(localProducts);
+
+    async function loadSupabaseProducts() {
+      try {
+        const supabaseProducts = await listProductsFromSupabase();
+
+        if (!cancelled && supabaseProducts.length) {
+          setCatalogProducts(supabaseProducts);
+          setCatalogSource("Supabase local");
+        }
+      } catch (error) {
+        console.warn("Using local catalog fallback.", error);
+      }
     }
+
+    loadSupabaseProducts();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -44,11 +63,7 @@ export function Storefront() {
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return products
-      .map((product) => ({
-        ...product,
-        status: inventory[product.id] ?? product.status
-      }))
+    return catalogProducts
       .filter((product) => product.status !== "draft")
       .filter((product) => genre === "Todos" || product.genre === genre)
       .filter((product) => {
@@ -56,21 +71,25 @@ export function Storefront() {
           return true;
         }
 
-        return [product.artist, product.title, product.genre, product.country, product.year.toString()]
+        return [product.artist, product.title, product.album, product.genre, product.country, product.year.toString()]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery);
       });
-  }, [genre, inventory, query]);
+  }, [catalogProducts, genre, query]);
+
+  const genresForCatalog = useMemo(() => {
+    return Array.from(new Set(catalogProducts.map((product) => product.genre).filter(Boolean))).sort();
+  }, [catalogProducts]);
 
   const featuredProduct = visibleProducts.find((product) => product.featured) ?? visibleProducts[0];
   const cartProducts = cart
     .map((item) => {
-      const product = products.find((candidate) => candidate.id === item.productId);
+      const product = catalogProducts.find((candidate) => candidate.id === item.productId);
       return product ? { ...product, quantity: item.quantity } : null;
     })
     .filter(Boolean) as Array<Product & { quantity: number }>;
-  const cartTotal = cartProducts.reduce((total, item) => total + item.price * item.quantity, 0);
+  const cartTotalLabel = formatTotals(cartProducts);
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   function addToCart(product: Product) {
@@ -92,7 +111,8 @@ export function Storefront() {
     const lines = cartProducts.map(
       (item) =>
         `- ${item.artist} - ${item.title} (${item.mediaCondition}/${item.sleeveCondition}) x${item.quantity}: ${formatCurrency(
-          item.price * item.quantity
+          item.price * item.quantity,
+          item.currency
         )}`
     );
 
@@ -101,7 +121,7 @@ export function Storefront() {
       "",
       ...lines,
       "",
-      `Total estimado: ${formatCurrency(cartTotal)}`,
+      `Total estimado: ${cartTotalLabel}`,
       "",
       "Me pasas disponibilidad final y opciones de envio/retiro?"
     ].join("\n");
@@ -111,7 +131,7 @@ export function Storefront() {
     <main className="site-shell">
       <header className="topbar">
         <Link className="brand" href="/" aria-label="Ir al inicio">
-          <Image src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={56} height={56} priority />
+          <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={56} height={56} priority />
           <span>LADO A DISCOS</span>
         </Link>
 
@@ -145,15 +165,36 @@ export function Storefront() {
           </div>
         </div>
 
-        {featuredProduct ? (
+        {featuredProduct && !isCustomProduct(featuredProduct.id) ? (
           <Link className="featured-record" href={`/producto/${featuredProduct.slug}`}>
             <span className="record-label">Nuevo ingreso</span>
-            <Image src={featuredProduct.photos[0]} alt={`${featuredProduct.artist} - ${featuredProduct.title}`} width={780} height={780} priority />
+            <ProductImage
+              src={featuredProduct.photos[0]}
+              alt={`${featuredProduct.artist} - ${featuredProduct.title}`}
+              width={780}
+              height={780}
+              priority
+            />
             <div>
               <strong>{featuredProduct.title}</strong>
-              <span>{formatCurrency(featuredProduct.price)}</span>
+              <span>{formatCurrency(featuredProduct.price, featuredProduct.currency)}</span>
             </div>
           </Link>
+        ) : featuredProduct ? (
+          <div className="featured-record">
+            <span className="record-label">Nuevo ingreso</span>
+            <ProductImage
+              src={featuredProduct.photos[0]}
+              alt={`${featuredProduct.artist} - ${featuredProduct.title}`}
+              width={780}
+              height={780}
+              priority
+            />
+            <div>
+              <strong>{featuredProduct.title}</strong>
+              <span>{formatCurrency(featuredProduct.price, featuredProduct.currency)}</span>
+            </div>
+          </div>
         ) : null}
       </section>
 
@@ -179,7 +220,7 @@ export function Storefront() {
           <div className="filter-stack">
             <span className="filter-label">Genero</span>
             <div className="genre-grid">
-              {["Todos", ...genresForFilters].map((item) => (
+              {["Todos", ...genresForCatalog].map((item) => (
                 <button className={genre === item ? "chip active" : "chip"} type="button" key={item} onClick={() => setGenre(item)}>
                   {item}
                 </button>
@@ -194,27 +235,45 @@ export function Storefront() {
               <p className="eyebrow">Catalogo inicial</p>
               <h2>{visibleProducts.length} discos publicados</h2>
             </div>
-            <span>Mock desde tus fotos locales</span>
+            <span>{catalogSource}</span>
           </div>
 
           <div className="product-grid">
             {visibleProducts.map((product) => {
-              const productStatus = inventory[product.id] ?? product.status;
+              const productStatus = product.status;
               const isUnavailable = productStatus === "reserved" || productStatus === "sold";
               const isInCart = cart.some((item) => item.productId === product.id);
+              const imageContent = (
+                <>
+                  <ProductImage
+                    src={product.photos[0]}
+                    alt={`${product.artist} - ${product.title}`}
+                    width={520}
+                    height={520}
+                    loading="lazy"
+                  />
+                  <span className={`status-badge ${productStatus}`}>{getStatusLabel(productStatus)}</span>
+                </>
+              );
 
               return (
                 <article className="product-card" key={product.id}>
-                  <Link className="product-image-link" href={`/producto/${product.slug}`} aria-label={`Ver ${product.title}`}>
-                    <Image src={product.photos[0]} alt={`${product.artist} - ${product.title}`} width={520} height={520} loading="lazy" />
-                    <span className={`status-badge ${productStatus}`}>{getStatusLabel(productStatus)}</span>
-                  </Link>
+                  {isCustomProduct(product.id) ? (
+                    <div className="product-image-link disabled-detail" aria-label={`Vista previa de ${product.title}`}>
+                      {imageContent}
+                    </div>
+                  ) : (
+                    <Link className="product-image-link" href={`/producto/${product.slug}`} aria-label={`Ver ${product.title}`}>
+                      {imageContent}
+                    </Link>
+                  )}
                   <div className="product-card-body">
                     <div>
                       <p>{product.artist}</p>
                       <h3>{product.title}</h3>
                     </div>
                     <div className="product-meta">
+                      <span>{product.album}</span>
                       <span>{product.genre}</span>
                       <span>{product.year}</span>
                       <span>{product.country}</span>
@@ -224,7 +283,7 @@ export function Storefront() {
                       <span>Tapa {product.sleeveCondition}</span>
                     </div>
                     <div className="product-purchase-row">
-                      <strong>{formatCurrency(product.price)}</strong>
+                      <strong>{formatCurrency(product.price, product.currency)}</strong>
                       <button
                         className="small-buy"
                         type="button"
@@ -256,13 +315,28 @@ export function Storefront() {
       <CartDrawer
         open={cartOpen}
         products={cartProducts}
-        total={cartTotal}
+        total={cartTotalLabel}
         onClose={() => setCartOpen(false)}
         onRemove={removeFromCart}
         orderUrl={buildWhatsAppUrl(buildOrderMessage())}
       />
     </main>
   );
+}
+
+function formatTotals(products: Array<Product & { quantity: number }>) {
+  const totals = products.reduce<Record<ProductCurrency, number>>(
+    (currentTotals, product) => ({
+      ...currentTotals,
+      [product.currency]: currentTotals[product.currency] + product.price * product.quantity
+    }),
+    { ARS: 0, USD: 0 }
+  );
+
+  return (Object.entries(totals) as Array<[ProductCurrency, number]>)
+    .filter(([, total]) => total > 0)
+    .map(([currency, total]) => formatCurrency(total, currency))
+    .join(" + ");
 }
 
 function getStatusLabel(status: ProductStatus) {
@@ -286,7 +360,7 @@ function CartDrawer({
 }: {
   open: boolean;
   products: Array<Product & { quantity: number }>;
-  total: number;
+  total: string;
   onClose: () => void;
   onRemove: (productId: string) => void;
   orderUrl: string;
@@ -309,10 +383,10 @@ function CartDrawer({
         ) : (
           products.map((product) => (
             <div className="cart-item" key={product.id}>
-              <Image src={product.photos[0]} alt={product.title} width={76} height={76} />
+              <ProductImage src={product.photos[0]} alt={product.title} width={76} height={76} />
               <div>
                 <strong>{product.title}</strong>
-                <span>{formatCurrency(product.price)}</span>
+                <span>{formatCurrency(product.price, product.currency)}</span>
                 <small>
                   {product.mediaCondition}/{product.sleeveCondition}
                 </small>
@@ -328,7 +402,7 @@ function CartDrawer({
       <div className="cart-footer">
         <div className="cart-total">
           <span>Total estimado</span>
-          <strong>{formatCurrency(total)}</strong>
+          <strong>{total || "-"}</strong>
         </div>
         <a className={products.length ? "whatsapp-action" : "whatsapp-action disabled"} href={products.length ? orderUrl : undefined} target="_blank">
           <MessageCircle size={18} />
