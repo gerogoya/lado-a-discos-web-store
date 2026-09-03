@@ -12,6 +12,8 @@ import { products } from "@/lib/products";
 import { listProductsFromSupabase } from "@/lib/supabase/products";
 import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
+const staticProductSlugs = new Set(products.map((product) => product.slug));
+
 type CartItem = {
   productId: string;
   quantity: number;
@@ -166,7 +168,7 @@ export function Storefront() {
         </div>
 
         {featuredProduct && !isCustomProduct(featuredProduct.id) ? (
-          <Link className="featured-record" href={`/producto/${featuredProduct.slug}`}>
+          <Link className="featured-record" href={getProductDetailHref(featuredProduct)}>
             <span className="record-label">Nuevo ingreso</span>
             <ProductImage
               src={featuredProduct.photos[0]}
@@ -263,7 +265,7 @@ export function Storefront() {
                       {imageContent}
                     </div>
                   ) : (
-                    <Link className="product-image-link" href={`/producto/${product.slug}`} aria-label={`Ver ${product.title}`}>
+                    <Link className="product-image-link" href={getProductDetailHref(product)} aria-label={`Ver ${product.title}`}>
                       {imageContent}
                     </Link>
                   )}
@@ -348,6 +350,14 @@ function getStatusLabel(status: ProductStatus) {
   };
 
   return labels[status];
+}
+
+function getProductDetailHref(product: Product) {
+  if (staticProductSlugs.has(product.slug)) {
+    return `/producto/${product.slug}`;
+  }
+
+  return `/producto?slug=${encodeURIComponent(product.slug)}`;
 }
 
 function CartDrawer({
