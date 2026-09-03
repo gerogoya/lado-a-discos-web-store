@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthRedirectHandler } from "@/components/AuthRedirectHandler";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <body>
+        <AuthRedirectHandler />
+        {children}
+      </body>
     </html>
   );
 }

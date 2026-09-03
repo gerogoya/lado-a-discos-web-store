@@ -68,6 +68,16 @@ button {
   cursor: pointer;
 }
 
+button,
+a {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
 button:disabled,
 a.disabled {
   cursor: not-allowed;
@@ -234,12 +244,45 @@ p {
 .primary-action {
   background: var(--paper);
   color: #181511;
+  box-shadow: 0 7px 0 rgba(84, 68, 43, 0.7), 0 14px 28px rgba(0, 0, 0, 0.28);
 }
 
 .secondary-action {
   background: rgba(222, 208, 180, 0.07);
   color: var(--ink);
   border-color: var(--line);
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.22);
+}
+
+.primary-action:hover,
+.admin-save-button:hover {
+  background: #eadabd;
+}
+
+.secondary-action:hover,
+.admin-delete-button:hover {
+  background: rgba(222, 208, 180, 0.11);
+  border-color: rgba(222, 208, 180, 0.3);
+}
+
+.primary-action:active,
+.secondary-action:active,
+.small-buy:active,
+.whatsapp-action:active,
+.admin-save-button:active,
+.admin-delete-button:active,
+.remove-button:active,
+.icon-button:active {
+  transform: translateY(3px) scale(0.985);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.42), inset 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+
+.primary-action:disabled,
+.secondary-action:disabled,
+.admin-save-button:disabled,
+.admin-delete-button:disabled {
+  transform: none;
+  box-shadow: none;
 }
 
 .featured-record {
@@ -851,6 +894,99 @@ p {
   margin-top: 16px;
 }
 
+.admin-new-preview {
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(222, 208, 180, 0.06);
+}
+
+.admin-new-preview img {
+  width: 78px;
+  height: 78px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.admin-new-preview span {
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.admin-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 80;
+  width: min(430px, calc(100vw - 28px));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(222, 208, 180, 0.28);
+  background: rgba(28, 26, 22, 0.96);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+  color: var(--ink);
+}
+
+.admin-toast.success {
+  border-color: rgba(114, 112, 74, 0.8);
+}
+
+.admin-toast.error {
+  border-color: rgba(227, 163, 153, 0.82);
+}
+
+.admin-toast > svg {
+  margin-top: 2px;
+  color: var(--paper);
+}
+
+.admin-toast.success > svg {
+  color: #c9d08d;
+}
+
+.admin-toast.error > svg {
+  color: #e3a399;
+}
+
+.admin-toast div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-toast strong {
+  color: var(--paper);
+  font-size: 14px;
+}
+
+.admin-toast span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.admin-toast button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(222, 208, 180, 0.06);
+  color: var(--ink);
+}
+
 .admin-message {
   margin: 0 0 16px;
   color: var(--paper);
@@ -957,18 +1093,37 @@ p {
   padding: 9px 12px;
 }
 
-.admin-save-button {
-  min-height: 42px;
+.admin-row-actions {
   align-self: end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.admin-save-button,
+.admin-delete-button {
+  min-height: 42px;
   border: 1px solid transparent;
   border-radius: 12px;
-  background: var(--paper);
-  color: #181511;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-weight: 900;
+}
+
+.admin-save-button {
+  background: var(--paper);
+  color: #181511;
+  box-shadow: 0 6px 0 rgba(84, 68, 43, 0.7), 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+.admin-delete-button {
+  padding: 0 12px;
+  background: rgba(116, 53, 47, 0.28);
+  color: #f3d7d1;
+  border-color: rgba(227, 163, 153, 0.28);
+  box-shadow: 0 6px 0 rgba(42, 17, 14, 0.72), 0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
 .product-lookup-state {
@@ -1069,6 +1224,10 @@ p {
 
   .admin-field-wide {
     grid-column: auto;
+  }
+
+  .admin-row-actions {
+    grid-template-columns: 1fr;
   }
 }
 
