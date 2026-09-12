@@ -4,6 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "node scripts/dev-local.mjs",
+    "db:migrate:local": "node scripts/migrate-local.mjs",
+    "db:review:local": "node scripts/prepare-local-review.mjs",
+    "test:catalog": "node scripts/test-catalog.mjs",
+    "test:gallery": "node scripts/test-gallery.mjs",
+    "test:homepage": "node scripts/test-homepage.mjs",
+    "test:admin": "playwright test",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -18,6 +25,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.1",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",

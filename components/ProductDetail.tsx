@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
+import { ProductGallery } from "@/components/ProductGallery";
 import { publicAsset } from "@/lib/assets";
 import { readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
@@ -75,9 +76,8 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
         "Hola LADO A DISCOS, quiero consultar por este disco:",
         "",
         `${product.artist} - ${product.title}`,
-        `Album: ${product.album}`,
         `Precio: ${formatCurrency(product.price, product.currency)}`,
-        `Estado: disco ${product.mediaCondition}, tapa ${product.sleeveCondition}`,
+        `Estado: disco ${product.mediaCondition || "sin especificar"}, tapa ${product.sleeveCondition || "sin especificar"}`,
         `Link/producto: ${product.slug}`
       ].join("\n")
     );
@@ -107,30 +107,24 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
       </header>
 
       <section className="product-detail-grid">
-        <div className="detail-gallery">
-          {(product.photos.length ? product.photos : [publicAsset("/brand/lado-a-discos-logo.jpg")]).map((photo) => (
-            <ProductImage key={photo} src={photo} alt={`${product.artist} - ${product.title}`} width={900} height={900} priority />
-          ))}
-        </div>
+        <ProductGallery key={`${product.id}:${product.photos.join("|")}`} photos={product.photos} title={`${product.artist} - ${product.title}`} />
 
         <div className="detail-info">
-          <p className="eyebrow">{product.genre} · {product.country} · {product.year}</p>
+          <p className="eyebrow">{[product.genre, product.country, product.year].filter(Boolean).join(" · ")}</p>
           <h1>{product.title}</h1>
           <p className="detail-artist">{product.artist}</p>
           <strong className="detail-price">{formatCurrency(product.price, product.currency)}</strong>
 
           <div className="detail-status-grid">
-            <span>Album <strong>{product.album}</strong></span>
-            <span>Disco <strong>{product.mediaCondition}</strong></span>
-            <span>Tapa <strong>{product.sleeveCondition}</strong></span>
+            {product.format && <span>Formato <strong>{product.format}</strong></span>}
+            {product.label && <span>Sello <strong>{product.label}</strong></span>}
+            <span>Disco <strong>{product.mediaCondition || "Sin especificar"}</strong></span>
+            <span>Tapa <strong>{product.sleeveCondition || "Sin especificar"}</strong></span>
             <span>Stock <strong>{product.stock}</strong></span>
             <span>Estado <strong>{statusLabel(status)}</strong></span>
           </div>
 
-          <p className="detail-copy">
-            {product.description ||
-              "Publicacion mock creada desde foto local. En el backend real este espacio mostrara descripcion, notas de condicion, sello, numero de catalogo y detalles de reproduccion."}
-          </p>
+          {product.description && <p className="detail-copy">{product.description}</p>}
 
           <div className="detail-actions">
             <button className="primary-action" type="button" disabled={isUnavailable || isInCart} onClick={addToCart}>

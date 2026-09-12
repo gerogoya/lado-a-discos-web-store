@@ -1,6 +1,5 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
-  ProductImageInsert,
   ProductImageRow,
   ProductIdentifierInsert,
   ProductIdentifierRow,
@@ -9,19 +8,12 @@ import type {
   ProductUpdate
 } from "@/lib/supabase/database.types";
 import type { Product, ProductCondition, ProductCurrency, ProductStatus } from "@/types/product";
+import type { CatalogKind } from "@/types/catalog";
+import type { ProductImageRecord } from "@/types/product-image";
+export type { ProductImageRecord } from "@/types/product-image";
 
 export const productImageBucket = "product-images";
 export const productDescriptionMaxLength = 600;
-
-export type ProductImageRecord = {
-  id: string;
-  productId: string;
-  storagePath: string;
-  publicUrl: string;
-  altText: string;
-  sortOrder: number;
-  createdAt: string;
-};
 
 export type ProductIdentifierRecord = {
   id: string;
@@ -57,6 +49,11 @@ export type ProductEditorInput = {
   stock: number;
   isNew: boolean;
   featured: boolean;
+  country: string;
+  format: string;
+  label: string;
+  optionIds: Partial<Record<CatalogKind, string | null>>;
+  needsReview: boolean;
 };
 
 type ProductQueryRow = ProductRow & {
@@ -129,90 +126,6 @@ export async function deleteProductFromSupabase(productId: string) {
   }
 }
 
-export async function uploadProductImageToSupabase({
-  productId,
-  file,
-  sortOrder
-}: {
-  productId: string;
-  file: File;
-  sortOrder: number;
-}) {
-  const supabase = createSupabaseBrowserClient();
-  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const storagePath = `${productId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-
-  const { error: uploadError } = await supabase.storage.from(productImageBucket).upload(storagePath, file, {
-    contentType: file.type,
-    upsert: false
-  });
-
-  if (uploadError) {
-    throw uploadError;
-  }
-
-  const imagePayload: ProductImageInsert = {
-    product_id: productId,
-    storage_path: storagePath,
-    alt_text: file.name,
-    sort_order: sortOrder
-  };
-
-  const { data, error } = await supabase.from("product_images").insert(imagePayload).select("*").single();
-
-  if (error) {
-    throw error;
-  }
-
-  return mapProductImageRecord(data);
-}
-
-export async function replaceProductImagesInSupabase({ productId, files }: { productId: string; files: File[] }) {
-  if (!files.length) {
-    return [];
-  }
-
-  const supabase = createSupabaseBrowserClient();
-  const { data: existingImages, error: existingImagesError } = await supabase
-    .from("product_images")
-    .select("*")
-    .eq("product_id", productId);
-
-  if (existingImagesError) {
-    throw existingImagesError;
-  }
-
-  const uploadedImages = await Promise.all(
-    files.map((file, index) =>
-      uploadProductImageToSupabase({
-        productId,
-        file,
-        sortOrder: index
-      })
-    )
-  );
-  const existingImageRows = (existingImages ?? []) as ProductImageRow[];
-  const existingImageIds = existingImageRows.map((image) => image.id);
-  const existingStoragePaths = existingImageRows.map((image) => image.storage_path);
-
-  if (existingImageIds.length) {
-    const { error: deleteError } = await supabase.from("product_images").delete().in("id", existingImageIds);
-
-    if (deleteError) {
-      throw deleteError;
-    }
-  }
-
-  if (existingStoragePaths.length) {
-    const { error: removeStorageError } = await supabase.storage.from(productImageBucket).remove(existingStoragePaths);
-
-    if (removeStorageError) {
-      console.warn("Could not remove replaced product image files.", removeStorageError);
-    }
-  }
-
-  return uploadedImages;
-}
 
 export async function replaceProductIdentifiersInSupabase(productId: string, identifiers: ProductIdentifierInsert[]) {
   const supabase = createSupabaseBrowserClient();
@@ -244,7 +157,7 @@ export async function replaceProductIdentifiersInSupabase(productId: string, ide
 export function mapProductRecord(product: ProductQueryRow): ProductRecord {
   const images = (product.product_images ?? [])
     .map((image) => mapProductImageRecord(image))
-    .sort((firstImage, secondImage) => firstImage.sortOrder - secondImage.sortOrder);
+    .sort((firstImage, secondImage) => firstImage.sortOrder - secondImage.sortOrder || firstImage.id.localeCompare(secondImage.id));
   const identifiers = (product.product_identifiers ?? [])
     .map((identifier) => mapProductIdentifierRecord(identifier))
     .sort((firstIdentifier, secondIdentifier) => firstIdentifier.sortOrder - secondIdentifier.sortOrder);
@@ -261,13 +174,22 @@ export function mapProductRecord(product: ProductQueryRow): ProductRecord {
     mediaCondition: product.media_condition,
     sleeveCondition: product.sleeve_condition,
     genre: product.genre,
-    year: product.year ?? new Date().getFullYear(),
-    country: "Argentina",
+    year: product.year,
+    country: product.country ?? "",
+    format: product.format ?? "",
+    label: product.label ?? "",
+    optionIds: {
+      artist: product.artist_id, genre: product.genre_id, country: product.country_id,
+      format: product.format_id, label: product.label_id,
+      media_condition: product.media_condition_id, sleeve_condition: product.sleeve_condition_id
+    },
+    needsReview: product.needs_review ?? true,
     photos: images.map((image) => image.publicUrl),
     stock: product.stock,
     status: product.status,
     isNew: product.is_new,
     featured: product.featured,
+    featuredOrder: product.featured_order,
     images,
     identifiers,
     createdAt: product.created_at,
@@ -275,7 +197,7 @@ export function mapProductRecord(product: ProductQueryRow): ProductRecord {
   };
 }
 
-function mapProductImageRecord(image: ProductImageRow): ProductImageRecord {
+export function mapProductImageRecord(image: ProductImageRow): ProductImageRecord {
   return {
     id: image.id,
     productId: image.product_id,
@@ -301,6 +223,7 @@ function mapProductIdentifierRecord(identifier: ProductIdentifierRow): ProductId
 
 function toProductInsert(product: ProductEditorInput): ProductInsert {
   return {
+    ...catalogPayload(product),
     slug: product.slug,
     artist: product.artist,
     title: product.title,
@@ -321,6 +244,7 @@ function toProductInsert(product: ProductEditorInput): ProductInsert {
 
 function toProductUpdate(product: Partial<ProductEditorInput>): ProductUpdate {
   return {
+    ...catalogPayload(product),
     slug: product.slug,
     artist: product.artist,
     title: product.title,
@@ -336,6 +260,16 @@ function toProductUpdate(product: Partial<ProductEditorInput>): ProductUpdate {
     stock: product.stock,
     is_new: product.isNew,
     featured: product.featured
+  };
+}
+
+function catalogPayload(product: Partial<ProductEditorInput>): ProductUpdate {
+  return {
+    country: product.country, format: product.format, label: product.label, needs_review: product.needsReview,
+    artist_id: product.optionIds?.artist, genre_id: product.optionIds?.genre,
+    country_id: product.optionIds?.country, format_id: product.optionIds?.format,
+    label_id: product.optionIds?.label, media_condition_id: product.optionIds?.media_condition,
+    sleeve_condition_id: product.optionIds?.sleeve_condition
   };
 }
 
