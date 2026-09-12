@@ -165,3 +165,34 @@ test("inline errors preserve form data, duplicates are prevented, modal and admi
   expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
   await page.getByRole("dialog").getByRole("button", { name: "Cancelar", exact: true }).click();
 });
+
+test("featured checkbox explains the five-product limit", async ({ page }) => {
+  const original = await client.from("products").select("id,title,featured,featured_order").order("created_at");
+  if (original.error) throw original.error;
+  const candidates = original.data.slice(0, 6);
+  expect(candidates).toHaveLength(6);
+
+  try {
+    const cleared = await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+    if (cleared.error) throw cleared.error;
+    for (const candidate of candidates.slice(0, 5)) {
+      const featured = await client.from("products").update({ featured: true }).eq("id", candidate.id);
+      if (featured.error) throw featured.error;
+    }
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Inventario editable" })).toBeVisible();
+    await page.getByPlaceholder("Buscar producto...").fill(candidates[5].title);
+    const checkbox = page.locator(".admin-row").getByLabel("Destacado en el hero", { exact: true });
+    await expect(checkbox).toBeEnabled();
+    await checkbox.click();
+    await expect(checkbox).not.toBeChecked();
+    await expect(page.getByRole("alert", { name: "Notificación" })).toContainText("Ya hay 5 discos destacados");
+  } finally {
+    await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+    for (const product of original.data.filter(product => product.featured)) {
+      const restored = await client.from("products").update({ featured: true, featured_order: product.featured_order }).eq("id", product.id);
+      if (restored.error) throw restored.error;
+    }
+  }
+});

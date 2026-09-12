@@ -32,6 +32,10 @@ try {
   }
   const sixth = await authenticated.from("products").update({ featured: true }).eq("id", candidates[5].id);
   assert.match(sixth.error?.message ?? "", /hasta 5 discos/);
+  assert.equal((await authenticated.from("products").update({ featured: false }).eq("id", candidates[2].id)).error, null);
+  const replacement = await authenticated.from("products").update({ featured: true }).eq("id", candidates[5].id).select("featured_order").single();
+  assert.equal(replacement.error, null);
+  assert.equal(replacement.data.featured_order, 2, "A replacement must reuse the first free position");
   const featured = await service.from("products").select("id,featured_order").eq("featured", true).order("featured_order");
   assert.deepEqual(featured.data?.map(product => product.featured_order), [0, 1, 2, 3, 4]);
   const visibleId = crypto.randomUUID();
