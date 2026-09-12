@@ -20,10 +20,11 @@ export function validateProduct(product: Omit<Product, "id" | "slug">) {
   if (!Number.isFinite(product.price) || product.price < 0) throw new Error("El precio no puede ser negativo.");
 }
 
-export function ProductFields({ product, onChange, featuredDisabled = false }: {
+export function ProductFields({ product, onChange, featuredDisabled = false, onFeaturedLimit }: {
   product: Omit<Product, "id" | "slug">;
   onChange: (patch: Partial<Product>) => void;
   featuredDisabled?: boolean;
+  onFeaturedLimit?: () => void;
 }) {
   const maxYear = new Date().getFullYear() + 1;
   const years = Array.from({ length: maxYear - 1899 }, (_, index) => maxYear - index);
@@ -44,7 +45,13 @@ export function ProductFields({ product, onChange, featuredDisabled = false }: {
     <label className="admin-field"><span>Estado de publicación</span><select aria-label="Estado de publicación" value={product.status} onChange={event => onChange({ status: event.target.value as Product["status"] })}>
       <option value="published">Publicado</option><option value="reserved">Reservado</option><option value="sold">Vendido</option><option value="draft">Borrador</option>
     </select></label>
-    <label className="catalog-review" title={featuredDisabled ? "Ya hay 5 discos destacados. Quitá uno antes de seleccionar otro." : undefined}><input type="checkbox" checked={Boolean(product.featured)} disabled={featuredDisabled} onChange={event => onChange({ featured: event.target.checked })} />Destacado en el hero</label>
+    <label className="catalog-review" title={featuredDisabled ? "Ya hay 5 discos destacados. Quitá uno antes de seleccionar otro." : undefined}><input type="checkbox" checked={Boolean(product.featured)} onChange={event => {
+      if (event.target.checked && featuredDisabled) {
+        onFeaturedLimit?.();
+        return;
+      }
+      onChange({ featured: event.target.checked });
+    }} />Destacado en el hero</label>
     <label className="admin-field admin-field-wide"><span>Descripción</span><textarea maxLength={600} value={product.description} onChange={event => onChange({ description: event.target.value })} /></label>
     {product.needsReview && <label className="catalog-review admin-field-wide"><input type="checkbox" onChange={event => { if (event.target.checked) onChange({ needsReview: false }); }} />Confirmar que revisé los datos heredados de este disco.</label>}
   </div>;

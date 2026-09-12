@@ -189,6 +189,10 @@ export default function AdminPage() {
     });
   }
 
+  function showFeaturedLimit() {
+    showToast("error", "Límite de destacados", "Ya hay 5 discos destacados. Quitá uno, guardá el cambio y luego seleccioná otro.");
+  }
+
   function updateProduct(product: Product, patch: Partial<Product>) {
     setEditableProducts((currentProducts) =>
       currentProducts.map((currentProduct) => (currentProduct.id === product.id ? { ...currentProduct, ...patch } : currentProduct))
@@ -372,7 +376,7 @@ export default function AdminPage() {
         </div>
         <form onSubmit={addProduct}>
         <CatalogReady busy={creatingProduct || readingNewImages || !productsLoaded}>
-        <ProductFields product={newProduct} featuredDisabled={!newProduct.featured && featuredCount >= 5} onChange={patch => setNewProduct(current => ({ ...current, ...patch }))} />
+        <ProductFields product={newProduct} featuredDisabled={!newProduct.featured && featuredCount >= 5} onFeaturedLimit={showFeaturedLimit} onChange={patch => setNewProduct(current => ({ ...current, ...patch }))} />
         <ProductImageEditor images={newImages} onChange={setNewImages} onBusy={setReadingNewImages}
           onError={message => showToast("error", "No se pudieron agregar las imágenes", message)}
           onPrepared={() => showToast("success", "Imagen preparada", "Las imágenes se guardarán al agregar el disco.")} />
@@ -403,6 +407,7 @@ export default function AdminPage() {
             <ProductEditor
               product={product}
               featuredDisabled={!product.featured && featuredCount >= 5}
+              onFeaturedLimit={showFeaturedLimit}
               saving={savingProductId === product.id}
               deleting={deletingProductId === product.id}
               onChange={(patch) => updateProduct(product, patch)}
@@ -423,10 +428,11 @@ export default function AdminPage() {
 }
 
 function ProductEditor({
-  product, featuredDisabled, saving, deleting, onChange, images, onImagesChange, onImageError, onPrepared, onSave, onDelete
+  product, featuredDisabled, saving, deleting, onChange, onFeaturedLimit, images, onImagesChange, onImageError, onPrepared, onSave, onDelete
 }: {
   product: Product; featuredDisabled: boolean; saving: boolean; deleting: boolean;
   onChange: (patch: Partial<Product>) => void;
+  onFeaturedLimit: () => void;
   images: ImageDraft[]; onImagesChange: (images: ImageDraft[]) => void;
   onImageError: (message: string) => void; onPrepared: () => void;
   onSave: () => void; onDelete: () => void;
@@ -434,7 +440,7 @@ function ProductEditor({
   const [reading, setReading] = useState(false);
   return <form onSubmit={event => { event.preventDefault(); if (!reading) onSave(); }}>
     <CatalogReady busy={saving || deleting || reading}>
-      <ProductFields product={product} featuredDisabled={featuredDisabled} onChange={onChange} />
+      <ProductFields product={product} featuredDisabled={featuredDisabled} onFeaturedLimit={onFeaturedLimit} onChange={onChange} />
       <ProductImageEditor images={images} onChange={onImagesChange} onError={onImageError} onPrepared={onPrepared} onBusy={setReading} />
       <div className="admin-row-actions">
         <button className="admin-save-button" type="submit" disabled={saving || deleting || reading}><Save size={16} />{saving ? "Guardando..." : "Guardar"}</button>
