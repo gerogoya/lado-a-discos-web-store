@@ -19,7 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" data-scroll-behavior="smooth">
-      <body>
+      <body suppressHydrationWarning>
         <AuthRedirectHandler />
         {children}
       </body>

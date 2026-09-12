@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { MessageCircle, Minus, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageCircle, Minus, Pause, Play, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
+import { SimpleRichText, contentHref, isSafeContentHref } from "@/components/SimpleRichText";
 import { publicAsset } from "@/lib/assets";
 import { buildClientProducts, isCustomProduct, readLegacyInventory, readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { formatCurrency } from "@/lib/format";
 import { products } from "@/lib/products";
 import { listProductsFromSupabase } from "@/lib/supabase/products";
+import { getHomepage } from "@/lib/supabase/homepage";
+import { defaultHomepageContent, type HomepageContent, type HomepageSection } from "@/types/homepage";
 import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
 const staticProductSlugs = new Set(products.map((product) => product.slug));
@@ -26,6 +29,11 @@ export function Storefront() {
   const [cartOpen, setCartOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(products);
   const [catalogSource, setCatalogSource] = useState("Catalogo local");
+  const [homepageContent, setHomepageContent] = useState<HomepageContent>(defaultHomepageContent);
+  const [homepageSections, setHomepageSections] = useState<HomepageSection[]>([]);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [carouselPaused, setCarouselPaused] = useState(false);
+  const [carouselInteracting, setCarouselInteracting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +50,7 @@ export function Storefront() {
       try {
         const supabaseProducts = await listProductsFromSupabase();
 
-        if (!cancelled && supabaseProducts.length) {
+        if (!cancelled) {
           setCatalogProducts(supabaseProducts);
           setCatalogSource("Supabase local");
         }
@@ -52,6 +60,12 @@ export function Storefront() {
     }
 
     loadSupabaseProducts();
+    void getHomepage().then(homepage => {
+      if (!cancelled) {
+        setHomepageContent(homepage.content);
+        setHomepageSections(homepage.sections);
+      }
+    }).catch(error => console.warn("Using default homepage content.", error));
 
     return () => {
       cancelled = true;
@@ -73,7 +87,7 @@ export function Storefront() {
           return true;
         }
 
-        return [product.artist, product.title, product.album, product.genre, product.country, product.year.toString()]
+        return [product.artist, product.title, product.genre, product.country, product.year?.toString(), product.label, product.format]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery);
@@ -84,7 +98,26 @@ export function Storefront() {
     return Array.from(new Set(catalogProducts.map((product) => product.genre).filter(Boolean))).sort();
   }, [catalogProducts]);
 
-  const featuredProduct = visibleProducts.find((product) => product.featured) ?? visibleProducts[0];
+  const featuredProducts = useMemo(() => {
+    const publishedProducts = catalogProducts.filter(product => product.status !== "draft");
+    const selected = publishedProducts.filter(product => product.featured)
+      .sort((first, second) => (first.featuredOrder ?? 99) - (second.featuredOrder ?? 99) || first.id.localeCompare(second.id))
+      .slice(0, 5);
+    return selected.length ? selected : publishedProducts.slice(0, 1);
+  }, [catalogProducts]);
+  const featuredProduct = featuredProducts[featuredIndex % Math.max(featuredProducts.length, 1)];
+
+  useEffect(() => {
+    setFeaturedIndex(current => featuredProducts.length ? current % featuredProducts.length : 0);
+  }, [featuredProducts.length]);
+
+  useEffect(() => {
+    if (featuredProducts.length < 2 || carouselPaused || carouselInteracting) return;
+    const interval = window.setInterval(() => {
+      setFeaturedIndex(current => (current + 1) % featuredProducts.length);
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [carouselInteracting, carouselPaused, featuredProducts.length]);
   const cartProducts = cart
     .map((item) => {
       const product = catalogProducts.find((candidate) => candidate.id === item.productId);
@@ -151,53 +184,35 @@ export function Storefront() {
 
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">Vinilos usados y nuevos · Argentina</p>
-          <h1>Discos con historia, fotos reales y estado informado.</h1>
-          <p>
-            Catalogo inicial de LPs de 12 pulgadas. Cada pieza se publica con stock unitario, estado del disco,
-            estado de tapa y pedido directo por WhatsApp.
-          </p>
+          <p className="eyebrow">{homepageContent.eyebrow}</p>
+          <h1>{homepageContent.heading}</h1>
+          <SimpleRichText value={homepageContent.body} />
           <div className="hero-actions">
-            <a className="primary-action" href="#catalogo">
-              Ver catalogo
-            </a>
-            <a className="secondary-action" href="#clasificacion">
-              Como clasificamos
-            </a>
+            {homepageContent.actions.filter(action => action.visible && isSafeContentHref(action.href)).map(action =>
+              <a key={action.id} className={action.id === "primary" ? "primary-action" : "secondary-action"} href={contentHref(action.href)}>{action.label}</a>
+            )}
           </div>
         </div>
 
-        {featuredProduct && !isCustomProduct(featuredProduct.id) ? (
-          <Link className="featured-record" href={getProductDetailHref(featuredProduct)}>
-            <span className="record-label">Nuevo ingreso</span>
-            <ProductImage
-              src={featuredProduct.photos[0]}
-              alt={`${featuredProduct.artist} - ${featuredProduct.title}`}
-              width={780}
-              height={780}
-              priority
-            />
-            <div>
+        {featuredProduct && <div className="featured-carousel" role="region" aria-label="Discos destacados"
+          onMouseEnter={() => setCarouselInteracting(true)} onMouseLeave={() => setCarouselInteracting(false)}
+          onFocusCapture={() => setCarouselInteracting(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setCarouselInteracting(false); }}>
+          <Link className="featured-record" href={getProductDetailHref(featuredProduct)} key={featuredProduct.id}>
+            <span className="record-label">Destacado {featuredIndex + 1} de {featuredProducts.length}</span>
+            <ProductImage src={featuredProduct.photos[0]} alt={`${featuredProduct.artist} - ${featuredProduct.title}`} width={780} height={780} priority />
+            <div className="featured-record-copy">
+              <span>{featuredProduct.artist}</span>
               <strong>{featuredProduct.title}</strong>
               <span>{formatCurrency(featuredProduct.price, featuredProduct.currency)}</span>
             </div>
           </Link>
-        ) : featuredProduct ? (
-          <div className="featured-record">
-            <span className="record-label">Nuevo ingreso</span>
-            <ProductImage
-              src={featuredProduct.photos[0]}
-              alt={`${featuredProduct.artist} - ${featuredProduct.title}`}
-              width={780}
-              height={780}
-              priority
-            />
-            <div>
-              <strong>{featuredProduct.title}</strong>
-              <span>{formatCurrency(featuredProduct.price, featuredProduct.currency)}</span>
-            </div>
-          </div>
-        ) : null}
+          {featuredProducts.length > 1 && <div className="featured-carousel-controls">
+            <button type="button" onClick={() => setFeaturedIndex(current => (current - 1 + featuredProducts.length) % featuredProducts.length)} aria-label="Disco destacado anterior"><ChevronLeft size={20} /></button>
+            <button type="button" onClick={() => setCarouselPaused(current => !current)} aria-label={carouselPaused ? "Reanudar carrusel" : "Pausar carrusel"}>{carouselPaused ? <Play size={18} /> : <Pause size={18} />}</button>
+            <span aria-live="off">{featuredIndex + 1} / {featuredProducts.length}</span>
+            <button type="button" onClick={() => setFeaturedIndex(current => (current + 1) % featuredProducts.length)} aria-label="Siguiente disco destacado"><ChevronRight size={20} /></button>
+          </div>}
+        </div>}
       </section>
 
       <section className="trust-strip" aria-label="Informacion de compra">
@@ -275,14 +290,15 @@ export function Storefront() {
                       <h3>{product.title}</h3>
                     </div>
                     <div className="product-meta">
-                      <span>{product.album}</span>
-                      <span>{product.genre}</span>
-                      <span>{product.year}</span>
-                      <span>{product.country}</span>
+                      {product.format && <span>{product.format}</span>}
+                      {product.genre && <span>{product.genre}</span>}
+                      {product.year && <span>{product.year}</span>}
+                      {product.country && <span>{product.country}</span>}
+                      {product.label && <span>{product.label}</span>}
                     </div>
                     <div className="condition-row">
-                      <span>Disco {product.mediaCondition}</span>
-                      <span>Tapa {product.sleeveCondition}</span>
+                      {product.mediaCondition && <span>Disco {product.mediaCondition}</span>}
+                      {product.sleeveCondition && <span>Tapa {product.sleeveCondition}</span>}
                     </div>
                     <div className="product-purchase-row">
                       <strong>{formatCurrency(product.price, product.currency)}</strong>
@@ -313,6 +329,15 @@ export function Storefront() {
           agregar una pagina dedicada con criterios de clasificacion, limpieza, prueba de escucha y garantia.
         </p>
       </section>
+
+      {homepageSections.length > 0 && <div className="homepage-sections">
+        {homepageSections.map(section => <section className="homepage-content-section" key={section.id} id={`seccion-${section.id}`}>
+          <div>
+            <h2>{section.title}</h2>
+            <SimpleRichText value={section.body} />
+          </div>
+        </section>)}
+      </div>}
 
       <CartDrawer
         open={cartOpen}
