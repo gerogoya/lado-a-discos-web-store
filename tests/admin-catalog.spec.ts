@@ -48,6 +48,14 @@ async function addOption(page: Page, form: Locator, label: string, name: string)
   await expect(dialog).not.toBeVisible();
 }
 
+async function productRowByTitle(rows: Locator, title: string) {
+  for (let index = 0; index < await rows.count(); index++) {
+    const row = rows.nth(index);
+    if (await row.getByLabel("Título del disco", { exact: true }).inputValue() === title) return row;
+  }
+  throw new Error(`No se encontró el disco ${title}.`);
+}
+
 test("create, reload, edit, rename, deactivate, and display a disk with persisted metadata and image", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
@@ -188,6 +196,54 @@ test("featured checkbox explains the five-product limit", async ({ page }) => {
     await checkbox.click();
     await expect(checkbox).not.toBeChecked();
     await expect(page.getByRole("alert", { name: "Notificación" })).toContainText("Ya hay 5 discos destacados");
+  } finally {
+    await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+    for (const product of original.data.filter(product => product.featured)) {
+      const restored = await client.from("products").update({ featured: true, featured_order: product.featured_order }).eq("id", product.id);
+      if (restored.error) throw restored.error;
+    }
+  }
+});
+
+test("replace and remove legacy featured disks and keep featured disks first", async ({ page }) => {
+  const original = await client.from("products").select("id,featured,featured_order").order("created_at");
+  const legacy = await client.from("products").select("id,title,artist,artist_id,needs_review").order("created_at");
+  if (original.error) throw original.error;
+  if (legacy.error) throw legacy.error;
+  const candidates = legacy.data.filter(product => !product.artist_id && product.artist && product.needs_review).slice(0, 2);
+  expect(candidates).toHaveLength(2);
+
+  try {
+    const cleared = await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
+    if (cleared.error) throw cleared.error;
+    const initialFeatured = await client.from("products").update({ featured: true }).eq("id", candidates[0].id);
+    if (initialFeatured.error) throw initialFeatured.error;
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Inventario editable" })).toBeVisible();
+    const rows = page.locator(".admin-row");
+    await expect(rows.first().getByLabel("Título del disco", { exact: true })).toHaveValue(candidates[0].title);
+    const previousFeatured = await productRowByTitle(rows, candidates[0].title);
+    const replacement = await productRowByTitle(rows, candidates[1].title);
+    await previousFeatured.getByLabel("Destacado en el hero", { exact: true }).uncheck();
+    await replacement.getByLabel("Destacado en el hero", { exact: true }).check();
+    await replacement.getByRole("button", { name: "Guardar", exact: true }).click();
+    await expect(page.getByText("Cambios guardados", { exact: true })).toBeVisible();
+
+    const swapped = await client.from("products").select("id,featured,featured_order").in("id", candidates.map(product => product.id));
+    if (swapped.error) throw swapped.error;
+    expect(swapped.data.find(product => product.id === candidates[0].id)?.featured).toBe(false);
+    expect(swapped.data.find(product => product.id === candidates[1].id)?.featured).toBe(true);
+    await expect(rows.first().getByLabel("Título del disco", { exact: true })).toHaveValue(candidates[1].title);
+
+    const savedReplacement = await productRowByTitle(rows, candidates[1].title);
+    await savedReplacement.getByLabel("Destacado en el hero", { exact: true }).uncheck();
+    await savedReplacement.getByRole("button", { name: "Guardar", exact: true }).click();
+    await expect.poll(async () => {
+      const removed = await client.from("products").select("featured,featured_order").eq("id", candidates[1].id).single();
+      if (removed.error) throw removed.error;
+      return removed.data;
+    }).toEqual({ featured: false, featured_order: null });
   } finally {
     await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
     for (const product of original.data.filter(product => product.featured)) {

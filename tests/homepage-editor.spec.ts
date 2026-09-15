@@ -43,7 +43,9 @@ test.afterAll(async () => {
   await client.from("homepage_content").update({
     eyebrow: originalContent.eyebrow, heading: originalContent.heading, body: originalContent.body,
     hero_image_storage_path: originalContent.hero_image_storage_path, hero_image_alt: originalContent.hero_image_alt,
-    actions: originalContent.actions
+    actions: originalContent.actions, trust_items: originalContent.trust_items, trust_strip_visible: originalContent.trust_strip_visible,
+    info_eyebrow: originalContent.info_eyebrow, info_heading: originalContent.info_heading, info_body: originalContent.info_body,
+    info_section_visible: originalContent.info_section_visible
   }).eq("id", true);
   await client.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
   for (const product of originalFeatured.filter(product => product.featured).sort((first, second) => (first.featured_order ?? 99) - (second.featured_order ?? 99))) {
@@ -74,6 +76,19 @@ test("edit, persist, and render the homepage hero and sections", async ({ page }
   await editor.getByLabel("Destino", { exact: true }).first().fill("#catalogo");
   await editor.getByLabel("Visible", { exact: true }).nth(1).uncheck();
 
+  const trustEditor = editor.locator('[aria-labelledby="trust-strip-title"]');
+  await trustEditor.getByLabel("Texto 1", { exact: true }).fill(`${prefix} confianza`);
+  await trustEditor.getByRole("button", { name: "Eliminar texto 4", exact: true }).click();
+  await trustEditor.getByRole("button", { name: "Agregar texto", exact: true }).click();
+  await trustEditor.getByLabel("Texto 4", { exact: true }).fill(`${prefix} agregado`);
+  await trustEditor.getByLabel("Visible", { exact: true }).uncheck();
+
+  const infoEditor = editor.locator('[aria-labelledby="info-section-title"]');
+  await infoEditor.getByLabel("Eyebrow de información", { exact: true }).fill(`${prefix} estado`);
+  await infoEditor.getByLabel("Título de información", { exact: true }).fill(`${prefix} información`);
+  await infoEditor.getByLabel("Descripción de información", { exact: true }).fill("Detalle **editable**.");
+  await infoEditor.getByLabel("Visible", { exact: true }).uncheck();
+
   const sectionEditors = editor.locator(".homepage-section-editor");
   const existingSectionCount = await sectionEditors.count();
   for (let index = 0; index < existingSectionCount; index++) {
@@ -95,6 +110,13 @@ test("edit, persist, and render the homepage hero and sections", async ({ page }
   await page.reload();
   await page.getByRole("button", { name: "Página principal", exact: true }).click();
   await expect(editor.getByLabel("Título H1", { exact: true })).toHaveValue(`${prefix} heading`);
+  await expect(editor.getByLabel("Texto 1", { exact: true })).toHaveValue(`${prefix} confianza`);
+  await expect(editor.getByLabel("Texto 4", { exact: true })).toHaveValue(`${prefix} agregado`);
+  await expect(editor.getByLabel("Eyebrow de información", { exact: true })).toHaveValue(`${prefix} estado`);
+  await expect(editor.getByLabel("Título de información", { exact: true })).toHaveValue(`${prefix} información`);
+  await expect(editor.getByLabel("Descripción de información", { exact: true })).toHaveValue("Detalle **editable**.");
+  await expect(trustEditor.getByLabel("Visible", { exact: true })).not.toBeChecked();
+  await expect(infoEditor.getByLabel("Visible", { exact: true })).not.toBeChecked();
   await expect(editor.locator(".homepage-section-editor")).toHaveCount(2);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: `${prefix} heading`, exact: true })).toBeVisible();
@@ -105,6 +127,8 @@ test("edit, persist, and render the homepage hero and sections", async ({ page }
   await expect(page.getByRole("link", { name: "Como clasificamos", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: `${prefix} visible`, exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: `${prefix} oculto`, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Informacion de compra" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: `${prefix} información`, exact: true })).toHaveCount(0);
   const carousel = page.getByRole("region", { name: "Discos destacados" });
   await expect(carousel.locator("strong")).toHaveText(featuredProducts[0].title);
   await expect(carousel.locator(".featured-record-copy")).toContainText(featuredProducts[0].artist);
@@ -112,6 +136,12 @@ test("edit, persist, and render the homepage hero and sections", async ({ page }
   await carousel.getByRole("button", { name: "Disco destacado anterior" }).click();
   await expect(carousel.locator("strong")).toHaveText(featuredProducts[0].title);
   await expect(carousel.getByRole("button", { name: "Pausar carrusel" })).toBeVisible();
+  const backToTop = page.getByRole("button", { name: "Ir arriba", exact: true });
+  await expect(backToTop).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(backToTop).toBeVisible();
+  await backToTop.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(10);
   await page.screenshot({ path: ".local/homepage-storefront-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

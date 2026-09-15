@@ -8,7 +8,7 @@ localSupabase();
 function sql(query) {
   return execFileSync("docker", ["exec", localDbContainer, "psql", "-U", "postgres", "-d", "postgres", "-At", "-v", "ON_ERROR_STOP=1", "-c", query], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 }).trim();
 }
-const version = "20260912030000";
+const version = "20260915000000";
 if (sql(`select count(*) from supabase_migrations.schema_migrations where version='${version}'`) === "1") {
   console.log("All local migrations are already applied.");
   process.exit(0);

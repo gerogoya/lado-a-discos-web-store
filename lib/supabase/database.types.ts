@@ -160,6 +160,12 @@ export type Database = {
           hero_image_storage_path: string;
           hero_image_alt: string;
           actions: Json;
+          trust_items: Json;
+          trust_strip_visible: boolean;
+          info_eyebrow: string;
+          info_heading: string;
+          info_body: string;
+          info_section_visible: boolean;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["homepage_content"]["Row"]> & Pick<Database["public"]["Tables"]["homepage_content"]["Row"], "eyebrow" | "heading" | "body" | "actions">;

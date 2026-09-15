@@ -10,12 +10,12 @@ export const productOptionFields = {
 } as const;
 const fieldOrder: CatalogKind[] = ["artist", "genre", "format", "country", "label", "media_condition", "sleeve_condition"];
 
-export function validateProduct(product: Omit<Product, "id" | "slug">) {
+export function validateProduct(product: Omit<Product, "id" | "slug">, allowIncompleteCatalogOptions = false) {
   if (!product.title.trim()) throw new Error("Ingresá el título del disco.");
-  if (!product.optionIds?.artist) throw new Error("Seleccioná un artista o agregá uno nuevo.");
-  if (!product.optionIds?.genre) throw new Error("Seleccioná un género.");
-  if (!product.optionIds?.format) throw new Error("Seleccioná un formato.");
-  if (!product.optionIds?.media_condition || !product.optionIds?.sleeve_condition) throw new Error("Seleccioná el estado de medio y el estado de tapa.");
+  if (!allowIncompleteCatalogOptions && !product.optionIds?.artist) throw new Error("Seleccioná un artista o agregá uno nuevo.");
+  if (!allowIncompleteCatalogOptions && !product.optionIds?.genre) throw new Error("Seleccioná un género.");
+  if (!allowIncompleteCatalogOptions && !product.optionIds?.format) throw new Error("Seleccioná un formato.");
+  if (!allowIncompleteCatalogOptions && (!product.optionIds?.media_condition || !product.optionIds?.sleeve_condition)) throw new Error("Seleccioná el estado de medio y el estado de tapa.");
   if (product.year !== null && (!Number.isInteger(product.year) || product.year < 1900 || product.year > new Date().getFullYear() + 1)) throw new Error("Seleccioná un año válido.");
   if (!Number.isFinite(product.price) || product.price < 0) throw new Error("El precio no puede ser negativo.");
 }

@@ -11,11 +11,13 @@
 .homepage-editor { display: grid; gap: 22px; padding-bottom: 88px; }
 .homepage-editor-band { border-bottom: 1px solid var(--line); padding: 0 0 24px; }
 .homepage-editor-band h2 { margin: 0; font-size: 22px; }
-.homepage-fields, .homepage-action-list, .homepage-sections-editor { display: grid; gap: 14px; }
+.homepage-fields, .homepage-action-list, .homepage-sections-editor, .homepage-trust-editor { display: grid; gap: 14px; }
 .simple-editor-heading > label { color: var(--muted); font-size: 12px; font-weight: 800; }
 .homepage-section-heading, .homepage-section-tools, .simple-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .homepage-action-row { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(260px, 1.2fr) auto; gap: 12px; align-items: end; }
 .homepage-visible { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; font-weight: 700; }
+.homepage-trust-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.homepage-add-item { justify-self: start; }
 .homepage-section-editor { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
 .homepage-section-tools { justify-content: flex-end; }
 .homepage-section-tools > span { margin-right: auto; color: var(--muted); font-size: 13px; font-weight: 800; }
