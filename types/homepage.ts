@@ -12,6 +12,12 @@ export type HomepageContent = {
   heroImageStoragePath: string;
   heroImageAlt: string;
   actions: HeroAction[];
+  trustItems: string[];
+  trustStripVisible: boolean;
+  infoEyebrow: string;
+  infoHeading: string;
+  infoBody: string;
+  infoSectionVisible: boolean;
   updatedAt: string;
 };
 
@@ -38,5 +44,11 @@ export const defaultHomepageContent: HomepageContent = {
     { id: "primary", label: "Ver catalogo", href: "#catalogo", visible: true },
     { id: "secondary", label: "Como clasificamos", href: "#clasificacion", visible: true }
   ],
+  trustItems: ["Stock real por unidad", "Pedido por WhatsApp", "Usados clasificados", "Listo para escalar a backend"],
+  trustStripVisible: true,
+  infoEyebrow: "Estado del producto",
+  infoHeading: "Disco y tapa se informan por separado.",
+  infoBody: "El esqueleto ya contempla una escala simple para usados: M, NM, EX, VG+, VG y G. En la proxima etapa se puede agregar una pagina dedicada con criterios de clasificacion, limpieza, prueba de escucha y garantia.",
+  infoSectionVisible: true,
   updatedAt: ""
 };

@@ -48,6 +48,14 @@ export function HomepageEditor({ showToast }: { showToast: Toast }) {
       showToast("error", "Revisá las secciones", "Todas las secciones necesitan un título.");
       return;
     }
+    if (content.trustItems.some(item => !item.trim())) {
+      showToast("error", "Revisá la información de compra", "Los textos vacíos deben completarse o eliminarse.");
+      return;
+    }
+    if (!content.infoEyebrow.trim() || !content.infoHeading.trim()) {
+      showToast("error", "Revisá la sección de información", "Completá el eyebrow y el título de la sección.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -83,6 +91,33 @@ export function HomepageEditor({ showToast }: { showToast: Toast }) {
           <label className="admin-field"><span>Destino</span><input value={action.href} maxLength={500} onChange={event => setContent({ ...content, actions: content.actions.map(item => item.id === action.id ? { ...item, href: event.target.value } : item) })} /></label>
           <label className="homepage-visible"><input type="checkbox" checked={action.visible} onChange={event => setContent({ ...content, actions: content.actions.map(item => item.id === action.id ? { ...item, visible: event.target.checked } : item) })} />Visible</label>
         </div>)}
+      </div>
+    </section>
+
+    <section className="homepage-editor-band" aria-labelledby="trust-strip-title">
+      <div className="homepage-section-heading">
+        <h2 id="trust-strip-title">Información de compra</h2>
+        <label className="homepage-visible"><input type="checkbox" checked={content.trustStripVisible} onChange={event => setContent({ ...content, trustStripVisible: event.target.checked })} />Visible</label>
+      </div>
+      <div className="homepage-trust-editor">
+        {content.trustItems.map((item, index) => <div className="homepage-trust-row" key={index}>
+          <label className="admin-field"><span>Texto {index + 1}</span><input value={item} maxLength={120} onChange={event => setContent({ ...content, trustItems: content.trustItems.map((current, itemIndex) => itemIndex === index ? event.target.value : current) })} /></label>
+          <button type="button" className="catalog-icon danger" aria-label={`Eliminar texto ${index + 1}`} title="Eliminar" onClick={() => setContent({ ...content, trustItems: content.trustItems.filter((_, itemIndex) => itemIndex !== index) })}><Trash2 size={17} /></button>
+        </div>)}
+        {content.trustItems.length < 8 && <button type="button" className="secondary-action homepage-add-item" onClick={() => setContent({ ...content, trustItems: [...content.trustItems, ""] })}><Plus size={16} />Agregar texto</button>}
+        {!content.trustItems.length && <p className="homepage-empty">No hay textos en esta sección.</p>}
+      </div>
+    </section>
+
+    <section className="homepage-editor-band" aria-labelledby="info-section-title">
+      <div className="homepage-section-heading">
+        <h2 id="info-section-title">Estado del producto</h2>
+        <label className="homepage-visible"><input type="checkbox" checked={content.infoSectionVisible} onChange={event => setContent({ ...content, infoSectionVisible: event.target.checked })} />Visible</label>
+      </div>
+      <div className="homepage-fields">
+        <label className="admin-field"><span>Eyebrow de información</span><input value={content.infoEyebrow} maxLength={120} onChange={event => setContent({ ...content, infoEyebrow: event.target.value })} /></label>
+        <label className="admin-field"><span>Título de información</span><input value={content.infoHeading} maxLength={180} onChange={event => setContent({ ...content, infoHeading: event.target.value })} /></label>
+        <SimpleTextEditor label="Descripción de información" value={content.infoBody} maxLength={3000} onChange={infoBody => setContent({ ...content, infoBody })} />
       </div>
     </section>
 

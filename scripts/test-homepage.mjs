@@ -44,7 +44,9 @@ try {
     expected_updated_at: originalContent.data.updated_at,
     content: {
       eyebrow: prefix, heading: "Heading", body: "Texto **importante**", hero_image_storage_path: "", hero_image_alt: "",
-      actions: [{ id: "primary", label: "Uno", href: "#catalogo", visible: true }, { id: "secondary", label: "Dos", href: "/admin", visible: false }]
+      actions: [{ id: "primary", label: "Uno", href: "#catalogo", visible: true }, { id: "secondary", label: "Dos", href: "/admin", visible: false }],
+      trust_items: ["Compra segura", "Stock real"], trust_strip_visible: false,
+      info_eyebrow: "Condición", info_heading: "Estado informado", info_body: "Detalle **editable**", info_section_visible: false
     },
     sections: [
       { id: visibleId, title: `${prefix} visible`, body: "Visible", visible: true, sort_order: 0 },
@@ -68,7 +70,10 @@ try {
   await service.from("homepage_content").update({
     eyebrow: originalContent.data.eyebrow, heading: originalContent.data.heading, body: originalContent.data.body,
     hero_image_storage_path: originalContent.data.hero_image_storage_path, hero_image_alt: originalContent.data.hero_image_alt,
-    actions: originalContent.data.actions, updated_at: originalContent.data.updated_at
+    actions: originalContent.data.actions, trust_items: originalContent.data.trust_items,
+    trust_strip_visible: originalContent.data.trust_strip_visible, info_eyebrow: originalContent.data.info_eyebrow,
+    info_heading: originalContent.data.info_heading, info_body: originalContent.data.info_body,
+    info_section_visible: originalContent.data.info_section_visible, updated_at: originalContent.data.updated_at
   }).eq("id", true);
   await service.from("products").update({ featured: false }).neq("id", "00000000-0000-0000-0000-000000000000");
   for (const product of (originalFeatured.data ?? []).filter(product => product.featured).sort((first, second) => (first.featured_order ?? 99) - (second.featured_order ?? 99))) {

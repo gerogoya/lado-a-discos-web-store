@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, MessageCircle, Minus, Pause, Play, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUp, ChevronLeft, ChevronRight, MessageCircle, Minus, Pause, Play, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
 import { SimpleRichText, contentHref, isSafeContentHref } from "@/components/SimpleRichText";
@@ -34,6 +34,7 @@ export function Storefront() {
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [carouselPaused, setCarouselPaused] = useState(false);
   const [carouselInteracting, setCarouselInteracting] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +76,13 @@ export function Storefront() {
   useEffect(() => {
     window.localStorage.setItem(storeConfig.cartStorageKey, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    const updateBackToTop = () => setShowBackToTop(window.scrollY > 500);
+    updateBackToTop();
+    window.addEventListener("scroll", updateBackToTop, { passive: true });
+    return () => window.removeEventListener("scroll", updateBackToTop);
+  }, []);
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -163,7 +171,7 @@ export function Storefront() {
   }
 
   return (
-    <main className="site-shell">
+    <main className="site-shell" id="inicio">
       <header className="topbar">
         <Link className="brand" href="/" aria-label="Ir al inicio">
           <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={56} height={56} priority />
@@ -215,12 +223,9 @@ export function Storefront() {
         </div>}
       </section>
 
-      <section className="trust-strip" aria-label="Informacion de compra">
-        <span>Stock real por unidad</span>
-        <span>Pedido por WhatsApp</span>
-        <span>Usados clasificados</span>
-        <span>Listo para escalar a backend</span>
-      </section>
+      {homepageContent.trustStripVisible && homepageContent.trustItems.length > 0 && <section className="trust-strip" aria-label="Informacion de compra">
+        {homepageContent.trustItems.map((item, index) => <span key={`${index}-${item}`}>{item}</span>)}
+      </section>}
 
       <section className="catalog-layout" id="catalogo">
         <aside className="filters-panel">
@@ -319,16 +324,13 @@ export function Storefront() {
         </div>
       </section>
 
-      <section className="info-section" id="clasificacion">
+      {homepageContent.infoSectionVisible && <section className="info-section" id="clasificacion">
         <div>
-          <p className="eyebrow">Estado del producto</p>
-          <h2>Disco y tapa se informan por separado.</h2>
+          <p className="eyebrow">{homepageContent.infoEyebrow}</p>
+          <h2>{homepageContent.infoHeading}</h2>
         </div>
-        <p>
-          El esqueleto ya contempla una escala simple para usados: M, NM, EX, VG+, VG y G. En la proxima etapa se puede
-          agregar una pagina dedicada con criterios de clasificacion, limpieza, prueba de escucha y garantia.
-        </p>
-      </section>
+        <SimpleRichText value={homepageContent.infoBody} />
+      </section>}
 
       {homepageSections.length > 0 && <div className="homepage-sections">
         {homepageSections.map(section => <section className="homepage-content-section" key={section.id} id={`seccion-${section.id}`}>
@@ -347,6 +349,15 @@ export function Storefront() {
         onRemove={removeFromCart}
         orderUrl={buildWhatsAppUrl(buildOrderMessage())}
       />
+      <button
+        className={`back-to-top${showBackToTop ? " visible" : ""}`}
+        type="button"
+        aria-label="Ir arriba"
+        title="Ir arriba"
+        onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
+      >
+        <ArrowUp size={20} />
+      </button>
     </main>
   );
 }

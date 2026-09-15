@@ -148,7 +148,13 @@ export default function AdminPage() {
         .join(" ")
         .toLowerCase()
         .includes(normalizedQuery)
-    );
+    ).sort((first, second) => {
+      const firstIsPersistedFeatured = first.featuredOrder !== null && first.featuredOrder !== undefined;
+      const secondIsPersistedFeatured = second.featuredOrder !== null && second.featuredOrder !== undefined;
+      if (firstIsPersistedFeatured !== secondIsPersistedFeatured) return firstIsPersistedFeatured ? -1 : 1;
+      if (firstIsPersistedFeatured && secondIsPersistedFeatured) return (first.featuredOrder ?? 99) - (second.featuredOrder ?? 99);
+      return 0;
+    });
   }, [editableProducts, query]);
   const featuredCount = editableProducts.filter(product => product.featured).length + (newProduct.featured ? 1 : 0);
 
@@ -203,7 +209,16 @@ export default function AdminPage() {
     setSavingProductId(product.id);
     let metadataSaved = false;
     try {
-      validateProduct(product);
+      validateProduct(product, Boolean(product.needsReview));
+      if (product.featured && (product.featuredOrder === null || product.featuredOrder === undefined)) {
+        const pendingRemovals = editableProducts.filter(item =>
+          item.id !== product.id && !item.featured && item.featuredOrder !== null && item.featuredOrder !== undefined
+        );
+        for (const pendingRemoval of pendingRemovals) {
+          const savedRemoval = await updateProductInSupabase(pendingRemoval.id, { featured: false });
+          setEditableProducts(current => current.map(item => item.id === savedRemoval.id ? savedRemoval : item));
+        }
+      }
       const savedProduct = await updateProductInSupabase(product.id, toProductEditorInput(product));
       metadataSaved = true;
       const pending = pendingGalleries[product.id];
