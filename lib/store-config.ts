@@ -1,6 +1,6 @@
 export const storeConfig = {
   name: "LADO A DISCOS",
-  whatsappNumber: "",
+  whatsappNumber: "5493795762457",
   instagramHandle: "",
   defaultCity: "Buenos Aires",
   cartStorageKey: "lado-a-discos-cart",
