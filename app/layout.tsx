@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthRedirectHandler } from "@/components/AuthRedirectHandler";
+import { AnalyticsConsent } from "@/components/AnalyticsConsent";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <AuthRedirectHandler />
         {children}
+        <AnalyticsConsent />
       </body>
     </html>
   );
