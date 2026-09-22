@@ -181,7 +181,7 @@ export function Storefront() {
         <nav className="nav-links" aria-label="Navegacion principal">
           <a href="#catalogo">Catalogo</a>
           <a href="#clasificacion">Estado</a>
-          <Link href="/admin">Admin</Link>
+          <a href="/admin/">Admin</a>
         </nav>
 
         <button className="icon-button cart-button" type="button" onClick={() => setCartOpen(true)} aria-label="Abrir carrito">
