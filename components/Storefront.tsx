@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ContactSection } from "./ContactSection";
+import { useContact } from "./ContactProvider";
+import { getProductDetailHref, getProductShareUrl } from "@/lib/product-links";
 import { ArrowUp, ChevronLeft, ChevronRight, MessageCircle, Minus, Pause, Play, Search, ShoppingBag, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
@@ -8,6 +11,7 @@ import { SimpleRichText, contentHref, isSafeContentHref } from "@/components/Sim
 import { publicAsset } from "@/lib/assets";
 import { buildClientProducts, isCustomProduct, readLegacyInventory, readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
+import { cartChangedEvent, readCart, saveCart, type CartItem } from "@/lib/cart";
 import { formatCurrency } from "@/lib/format";
 import { products } from "@/lib/products";
 import { listProductsFromSupabase } from "@/lib/supabase/products";
@@ -15,17 +19,13 @@ import { getHomepage } from "@/lib/supabase/homepage";
 import { defaultHomepageContent, type HomepageContent, type HomepageSection } from "@/types/homepage";
 import type { Product, ProductCurrency, ProductStatus } from "@/types/product";
 
-const staticProductSlugs = new Set(products.map((product) => product.slug));
-
-type CartItem = {
-  productId: string;
-  quantity: number;
-};
 
 export function Storefront() {
+  const contact = useContact();
   const [query, setQuery] = useState("");
   const [genre, setGenre] = useState("Todos");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartReady, setCartReady] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>(products);
   const [catalogSource, setCatalogSource] = useState("Catalogo local");
@@ -38,12 +38,10 @@ export function Storefront() {
 
   useEffect(() => {
     let cancelled = false;
-    const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
     const localProducts = buildClientProducts(readProductOverrides(), readLegacyInventory());
 
-    if (savedCart) {
-      setCart(JSON.parse(savedCart) as CartItem[]);
-    }
+    setCart(readCart());
+    setCartReady(true);
 
     setCatalogProducts(localProducts);
 
@@ -74,8 +72,18 @@ export function Storefront() {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(storeConfig.cartStorageKey, JSON.stringify(cart));
-  }, [cart]);
+    if (cartReady) saveCart(cart);
+  }, [cart, cartReady]);
+
+  useEffect(() => {
+    const syncCart = () => setCart(readCart());
+    window.addEventListener("storage", syncCart);
+    window.addEventListener(cartChangedEvent, syncCart);
+    return () => {
+      window.removeEventListener("storage", syncCart);
+      window.removeEventListener(cartChangedEvent, syncCart);
+    };
+  }, []);
 
   useEffect(() => {
     const updateBackToTop = () => setShowBackToTop(window.scrollY > 500);
@@ -88,7 +96,7 @@ export function Storefront() {
     const normalizedQuery = query.trim().toLowerCase();
 
     return catalogProducts
-      .filter((product) => product.status !== "draft")
+      .filter(isVisibleInMainList)
       .filter((product) => genre === "Todos" || product.genre === genre)
       .filter((product) => {
         if (!normalizedQuery) {
@@ -107,7 +115,7 @@ export function Storefront() {
   }, [catalogProducts]);
 
   const featuredProducts = useMemo(() => {
-    const publishedProducts = catalogProducts.filter(product => product.status !== "draft");
+    const publishedProducts = catalogProducts.filter(product => product.status === "published" && isVisibleInMainList(product));
     const selected = publishedProducts.filter(product => product.featured)
       .sort((first, second) => (first.featuredOrder ?? 99) - (second.featuredOrder ?? 99) || first.id.localeCompare(second.id))
       .slice(0, 5);
@@ -141,32 +149,35 @@ export function Storefront() {
         return currentCart;
       }
 
-      return [...currentCart, { productId: product.id, quantity: 1 }];
+      const nextCart = [...currentCart, { productId: product.id, quantity: 1 }];
+      saveCart(nextCart);
+      return nextCart;
     });
     setCartOpen(true);
   }
 
   function removeFromCart(productId: string) {
-    setCart((currentCart) => currentCart.filter((item) => item.productId !== productId));
+    setCart((currentCart) => {
+      const nextCart = currentCart.filter((item) => item.productId !== productId);
+      saveCart(nextCart);
+      return nextCart;
+    });
   }
 
   function buildOrderMessage() {
-    const lines = cartProducts.map(
-      (item) =>
-        `- ${item.artist} - ${item.title} (${item.mediaCondition}/${item.sleeveCondition}) x${item.quantity}: ${formatCurrency(
-          item.price * item.quantity,
-          item.currency
-        )}`
-    );
+    const lines = cartProducts.flatMap((item, index) => [
+      `${index + 1}. ${item.artist} - ${item.title}`,
+      `Disponibilidad: ${availabilityLabel(item.status)}`,
+      `Precio: ${formatCurrency(item.price * item.quantity, item.currency)}`,
+      `Link/Producto: ${getProductShareUrl(item, window.location.origin)}`,
+      ""
+    ]);
 
     return [
-      "Hola LADO A DISCOS, quiero consultar por este pedido:",
+      "Hola Charly, quiero consultar por estos discos:",
       "",
       ...lines,
-      "",
-      `Total estimado: ${cartTotalLabel}`,
-      "",
-      "Me pasas disponibilidad final y opciones de envio/retiro?"
+      `Total estimado: ${cartTotalLabel}`
     ].join("\n");
   }
 
@@ -174,14 +185,14 @@ export function Storefront() {
     <main className="site-shell" id="inicio">
       <header className="topbar">
         <Link className="brand" href="/" aria-label="Ir al inicio">
-          <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={56} height={56} priority />
+          <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={72} height={72} priority />
           <span>LADO A DISCOS</span>
         </Link>
 
         <nav className="nav-links" aria-label="Navegacion principal">
           <a href="#catalogo">Catalogo</a>
           <a href="#clasificacion">Estado</a>
-          <a href="/admin/">Admin</a>
+          <a href="#contacto">Contacto</a>
         </nav>
 
         <button className="icon-button cart-button" type="button" onClick={() => setCartOpen(true)} aria-label="Abrir carrito">
@@ -255,7 +266,7 @@ export function Storefront() {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Catalogo inicial</p>
-              <h2>{visibleProducts.length} discos publicados</h2>
+              <h2>{visibleProducts.length} discos en catálogo</h2>
             </div>
             <span>{catalogSource}</span>
           </div>
@@ -274,7 +285,7 @@ export function Storefront() {
                     height={520}
                     loading="lazy"
                   />
-                  <span className={`status-badge ${productStatus}`}>{getStatusLabel(productStatus)}</span>
+                  {productStatus === "published" ? <span className="status-badge published">Disponible</span> : <span className={`status-badge availability-overlay ${productStatus}`}>{getStatusLabel(productStatus)}</span>}
                 </>
               );
 
@@ -307,14 +318,16 @@ export function Storefront() {
                     </div>
                     <div className="product-purchase-row">
                       <strong>{formatCurrency(product.price, product.currency)}</strong>
-                      <button
-                        className="small-buy"
-                        type="button"
-                        disabled={isUnavailable || isInCart}
-                        onClick={() => addToCart(product)}
-                      >
-                        {isUnavailable ? "No disponible" : isInCart ? "En carrito" : "Agregar"}
-                      </button>
+                      {isUnavailable ? (
+                        <Link className="small-buy" href={getProductDetailHref(product)}>Ver más</Link>
+                      ) : <button
+                          className="small-buy"
+                          type="button"
+                          disabled={isInCart}
+                          onClick={() => addToCart(product)}
+                        >
+                          {isInCart ? "En carrito" : "Agregar"}
+                        </button>}
                     </div>
                   </div>
                 </article>
@@ -341,13 +354,15 @@ export function Storefront() {
         </section>)}
       </div>}
 
+      <ContactSection />
+
       <CartDrawer
         open={cartOpen}
         products={cartProducts}
         total={cartTotalLabel}
         onClose={() => setCartOpen(false)}
         onRemove={removeFromCart}
-        orderUrl={buildWhatsAppUrl(buildOrderMessage())}
+        orderUrl={buildWhatsAppUrl(buildOrderMessage(), contact.whatsapp)}
       />
       <button
         className={`back-to-top${showBackToTop ? " visible" : ""}`}
@@ -388,12 +403,21 @@ function getStatusLabel(status: ProductStatus) {
   return labels[status];
 }
 
-function getProductDetailHref(product: Product) {
-  if (staticProductSlugs.has(product.slug)) {
-    return `/producto/${product.slug}`;
-  }
+function availabilityLabel(status: ProductStatus) {
+  const labels: Record<ProductStatus, string> = {
+    published: "En stock",
+    reserved: "Reservado",
+    sold: "Vendido",
+    draft: "No publicado"
+  };
 
-  return `/producto?slug=${encodeURIComponent(product.slug)}`;
+  return labels[status];
+}
+
+function isVisibleInMainList(product: Product) {
+  // Static fallback products predate the dedicated field. Preserve the old
+  // published catalog while requiring an explicit opt-in for reserved/sold.
+  return product.visibleInMainList ?? product.status === "published";
 }
 
 function CartDrawer({

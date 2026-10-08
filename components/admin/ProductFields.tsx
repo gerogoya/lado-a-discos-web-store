@@ -42,9 +42,13 @@ export function ProductFields({ product, onChange, featuredDisabled = false, onF
     <label className="admin-field"><span>Moneda</span><select aria-label="Moneda" value={product.currency} onChange={event => onChange({ currency: event.target.value as Product["currency"] })}>
       <option value="ARS">Peso argentino</option><option value="USD">Dólar americano</option>
     </select></label>
-    <label className="admin-field"><span>Estado de publicación</span><select aria-label="Estado de publicación" value={product.status} onChange={event => onChange({ status: event.target.value as Product["status"] })}>
+    <label className="admin-field"><span>Estado de publicación</span><select aria-label="Estado de publicación" value={product.status} onChange={event => {
+      const status = event.target.value as Product["status"];
+      onChange(status === "draft" ? { status, visibleInMainList: false } : { status });
+    }}>
       <option value="published">Publicado</option><option value="reserved">Reservado</option><option value="sold">Vendido</option><option value="draft">Borrador</option>
     </select></label>
+    {product.status !== "draft" && <label className="catalog-review"><input type="checkbox" checked={Boolean(product.visibleInMainList)} onChange={event => onChange({ visibleInMainList: event.target.checked })} />Visible en listado principal</label>}
     <label className="catalog-review" title={featuredDisabled ? "Ya hay 5 discos destacados. Quitá uno antes de seleccionar otro." : undefined}><input type="checkbox" checked={Boolean(product.featured)} onChange={event => {
       if (event.target.checked && featuredDisabled) {
         onFeaturedLimit?.();

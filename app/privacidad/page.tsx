@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PrivacyPreferences } from "@/components/PrivacyPreferences";
-import { buildWhatsAppUrl } from "@/lib/store-config";
+import { PrivacyContact } from "@/components/PrivacyContact";
 
 export const metadata = {
   title: "Privacidad | LADO A DISCOS",
@@ -16,7 +16,8 @@ export default function PrivacyPage() {
       <p>Google puede recibir datos sobre tu navegador, ubicación aproximada e interacciones con el sitio, y usar cookies para distinguir visitas. <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noreferrer">Conocé cómo Google usa estos datos</a>.</p>
       <p>Guardamos tu elección de Analytics en el almacenamiento local de este navegador. El carrito también usa almacenamiento local. Si elegís “Rechazar”, no cargamos la etiqueta de Analytics.</p>
       <PrivacyPreferences />
-      <p>Para consultas sobre privacidad, <a href={buildWhatsAppUrl("Hola, quiero consultar sobre la privacidad de LADO A DISCOS.")} target="_blank" rel="noreferrer">escribinos por WhatsApp</a>.</p>
+      <p>La sección Contacto incluye un mapa de Google Maps. Al cargarlo, tu navegador se conecta con Google, independientemente de tu elección sobre Analytics.</p>
+      <p>Para consultas sobre privacidad, <PrivacyContact />.</p>
     </main>
   );
 }

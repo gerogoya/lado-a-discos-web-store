@@ -44,6 +44,7 @@ export type ProductEditorInput = {
   price: number;
   currency: ProductCurrency;
   status: ProductStatus;
+  visibleInMainList: boolean;
   mediaCondition: ProductCondition;
   sleeveCondition: ProductCondition;
   stock: number;
@@ -72,7 +73,7 @@ export async function listProductsFromSupabase({ includeDrafts = false } = {}) {
   let query = supabase.from("products").select(productSelect).order("created_at", { ascending: false });
 
   if (!includeDrafts) {
-    query = query.eq("status", "published");
+    query = query.eq("visible_in_main_list", true).in("status", ["published", "reserved", "sold"]);
   }
 
   const { data, error } = await query;
@@ -187,6 +188,7 @@ export function mapProductRecord(product: ProductQueryRow): ProductRecord {
     photos: images.map((image) => image.publicUrl),
     stock: product.stock,
     status: product.status,
+    visibleInMainList: product.visible_in_main_list,
     isNew: product.is_new,
     featured: product.featured,
     featuredOrder: product.featured_order,
@@ -234,6 +236,7 @@ function toProductInsert(product: ProductEditorInput): ProductInsert {
     price: product.price,
     currency: product.currency,
     status: product.status,
+    visible_in_main_list: product.visibleInMainList,
     media_condition: product.mediaCondition,
     sleeve_condition: product.sleeveCondition,
     stock: product.stock,
@@ -255,6 +258,7 @@ function toProductUpdate(product: Partial<ProductEditorInput>): ProductUpdate {
     price: product.price,
     currency: product.currency,
     status: product.status,
+    visible_in_main_list: product.visibleInMainList,
     media_condition: product.mediaCondition,
     sleeve_condition: product.sleeveCondition,
     stock: product.stock,

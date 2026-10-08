@@ -9,12 +9,12 @@ export const storeConfig = {
   adminStorageKey: "lado-a-discos-admin-session"
 };
 
-export function buildWhatsAppUrl(message: string) {
+export function buildWhatsAppUrl(message: string, number = storeConfig.whatsappNumber) {
   const encodedMessage = encodeURIComponent(message);
 
-  if (!storeConfig.whatsappNumber) {
+  if (!number) {
     return `https://wa.me/?text=${encodedMessage}`;
   }
 
-  return `https://wa.me/${storeConfig.whatsappNumber}?text=${encodedMessage}`;
+  return `https://wa.me/${number}?text=${encodedMessage}`;
 }

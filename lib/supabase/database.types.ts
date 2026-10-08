@@ -19,6 +19,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      contact_settings: {
+        Row: { id: boolean; heading: string; address: string; attendance: string; hours: string; whatsapp: string; email: string; map_query: string; map_visible: boolean; socials: Json; updated_at: string };
+        Insert: Partial<Database["public"]["Tables"]["contact_settings"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["contact_settings"]["Row"]>;
+        Relationships: [];
+      };
       products: {
         Row: {
           id: string;
@@ -43,6 +49,7 @@ export type Database = {
           price: number;
           currency: ProductCurrency;
           status: ProductStatus;
+          visible_in_main_list: boolean;
           media_condition: ProductCondition;
           sleeve_condition: ProductCondition;
           stock: number;
@@ -75,6 +82,7 @@ export type Database = {
           price?: number;
           currency?: ProductCurrency;
           status?: ProductStatus;
+          visible_in_main_list?: boolean;
           media_condition?: ProductCondition;
           sleeve_condition?: ProductCondition;
           stock?: number;
@@ -189,6 +197,14 @@ export type Database = {
     };
     Views: {};
     Functions: {
+      is_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      save_contact: {
+        Args: { expected_updated_at: string; content: Json };
+        Returns: Database["public"]["Tables"]["contact_settings"]["Row"];
+      };
       save_product_gallery: {
         Args: { target_product: string; expected_paths: string[]; gallery: { storage_path: string; alt_text: string }[] };
         Returns: ProductImageRow[];

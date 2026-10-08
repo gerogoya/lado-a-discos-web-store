@@ -29,6 +29,8 @@ export type Product = {
   images?: ProductImageRecord[];
   stock: number;
   status: ProductStatus;
+  /** Controls whether this record appears in the public catalog grid. */
+  visibleInMainList?: boolean;
   isNew: boolean;
   featured?: boolean;
   featuredOrder?: number | null;

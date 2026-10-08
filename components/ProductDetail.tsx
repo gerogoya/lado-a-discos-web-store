@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useContact } from "./ContactProvider";
+import { getProductShareUrl } from "@/lib/product-links";
 import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
@@ -8,30 +10,26 @@ import { ProductGallery } from "@/components/ProductGallery";
 import { publicAsset } from "@/lib/assets";
 import { readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
+import { addCartItem, readCart, type CartItem } from "@/lib/cart";
 import { formatCurrency } from "@/lib/format";
 import { getProductBySlugFromSupabase } from "@/lib/supabase/products";
 import type { Product, ProductStatus } from "@/types/product";
 
-type CartItem = {
-  productId: string;
-  quantity: number;
-};
-
 export function ProductDetail({ product: initialProduct }: { product: Product }) {
+  const contact = useContact();
+  const [origin, setOrigin] = useState<string>();
   const [product, setProduct] = useState<Product>(initialProduct);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [status, setStatus] = useState<ProductStatus>(initialProduct.status);
 
   useEffect(() => {
     let cancelled = false;
-    const savedCart = window.localStorage.getItem(storeConfig.cartStorageKey);
+    setOrigin(window.location.origin);
     const savedInventory = window.localStorage.getItem(storeConfig.inventoryStorageKey);
     const productOverrides = readProductOverrides();
     const savedProduct = productOverrides[initialProduct.id];
 
-    if (savedCart) {
-      setCart(JSON.parse(savedCart) as CartItem[]);
-    }
+    setCart(readCart());
 
     if (savedProduct) {
       setProduct(savedProduct);
@@ -64,33 +62,24 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
     };
   }, [initialProduct]);
 
-  useEffect(() => {
-    window.localStorage.setItem(storeConfig.cartStorageKey, JSON.stringify(cart));
-  }, [cart]);
-
   const isInCart = cart.some((item) => item.productId === product.id);
-  const isUnavailable = status === "reserved" || status === "sold";
+  const canAddToCart = status === "published";
   const whatsappUrl = useMemo(() => {
     return buildWhatsAppUrl(
       [
-        "Hola LADO A DISCOS, quiero consultar por este disco:",
+        "Hola Charly, quiero consultar por este disco:",
         "",
         `${product.artist} - ${product.title}`,
+        `Disponibilidad: ${availabilityLabel(status)}`,
         `Precio: ${formatCurrency(product.price, product.currency)}`,
         `Estado: disco ${product.mediaCondition || "sin especificar"}, tapa ${product.sleeveCondition || "sin especificar"}`,
-        `Link/producto: ${product.slug}`
-      ].join("\n")
+        `Link/Producto: ${getProductShareUrl(product, origin)}`
+      ].join("\n"), contact.whatsapp
     );
-  }, [product]);
+  }, [product, origin, contact.whatsapp]);
 
   function addToCart() {
-    setCart((currentCart) => {
-      if (currentCart.some((item) => item.productId === product.id)) {
-        return currentCart;
-      }
-
-      return [...currentCart, { productId: product.id, quantity: 1 }];
-    });
+    setCart(addCartItem(product.id));
   }
 
   return (
@@ -127,10 +116,10 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
           {product.description && <p className="detail-copy">{product.description}</p>}
 
           <div className="detail-actions">
-            <button className="primary-action" type="button" disabled={isUnavailable || isInCart} onClick={addToCart}>
-              <ShoppingBag size={18} />
-              {isUnavailable ? "No disponible" : isInCart ? "En carrito" : "Agregar al carrito"}
-            </button>
+            {canAddToCart && <button className="primary-action" type="button" disabled={isInCart} onClick={addToCart}>
+                <ShoppingBag size={18} />
+                {isInCart ? "En carrito" : "Agregar al carrito"}
+              </button>}
             <a className="secondary-action" href={whatsappUrl} target="_blank">
               <MessageCircle size={18} />
               Consultar
@@ -148,6 +137,17 @@ function statusLabel(status: ProductStatus) {
     reserved: "Reservado",
     sold: "Vendido",
     draft: "Borrador"
+  };
+
+  return labels[status];
+}
+
+function availabilityLabel(status: ProductStatus) {
+  const labels: Record<ProductStatus, string> = {
+    published: "En stock",
+    reserved: "Reservado",
+    sold: "Vendido",
+    draft: "No publicado"
   };
 
   return labels[status];

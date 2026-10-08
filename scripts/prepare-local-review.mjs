@@ -17,6 +17,8 @@ const result = existing
   ? await client.auth.admin.updateUserById(existing.id, { password: access.password, email_confirm: true })
   : await client.auth.admin.createUser({ ...access, email_confirm: true });
 if (result.error) throw result.error;
+const allowlist = await client.from("admin_users").upsert({ user_id: result.data.user.id });
+if (allowlist.error) throw allowlist.error;
 await mkdir(join(projectRoot, ".local"), { recursive: true });
 await writeFile(path, JSON.stringify(access, null, 2));
 console.log(`Local review account ready. Credentials: ${path}`);

@@ -3,6 +3,7 @@
 import "./catalog.css";
 
 import Link from "next/link";
+import type { Session } from "@supabase/supabase-js";
 import { AlertCircle, CheckCircle2, ImagePlus, Lock, PackageCheck, Plus, Save, Search, Star, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
@@ -14,6 +15,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CatalogManager, CatalogProvider, CatalogReady } from "@/components/admin/CatalogOptions";
 import { ProductImageEditor } from "@/components/admin/ProductImageEditor";
 import { HomepageEditor } from "@/components/admin/HomepageEditor";
+import { ContactEditor } from "@/components/admin/ContactEditor";
 import { imageDrafts, saveProductGallery } from "@/lib/supabase/product-gallery";
 import type { ImageDraft } from "@/types/product-image";
 import { ProductFields, validateProduct } from "@/components/admin/ProductFields";
@@ -54,12 +56,13 @@ const emptyProductForm: ProductFormState = {
   photos: [],
   stock: 1,
   status: "published",
+  visibleInMainList: true,
   isNew: false,
   featured: false
 };
 
 export default function AdminPage() {
-  const [section, setSection] = useState<"products" | "options" | "homepage">("products");
+  const [section, setSection] = useState<"products" | "options" | "homepage" | "contact">("products");
   const [loggedIn, setLoggedIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,12 +87,36 @@ export default function AdminPage() {
     let cancelled = false;
     try {
       const client = createSupabaseBrowserClient();
+      async function syncAdminAccess(session: Session | null) {
+        if (!session) {
+          if (!cancelled) setLoggedIn(false);
+          return;
+        }
+
+        const { data: isAdmin, error } = await client.rpc("is_admin");
+        if (cancelled) return;
+        if (error) {
+          setLoggedIn(false);
+          setLoginError(errorMessage(error, "No se pudo verificar el acceso de administrador."));
+          return;
+        }
+        if (!isAdmin) {
+          setLoggedIn(false);
+          setLoginError("Esta cuenta no tiene permisos de administrador.");
+          await client.auth.signOut();
+          return;
+        }
+        setLoginError("");
+        setLoggedIn(true);
+      }
       void client.auth.getSession().then(({ data, error }) => {
         if (error) throw error;
-        if (!cancelled) setLoggedIn(Boolean(data.session));
+        return syncAdminAccess(data.session);
       }).catch(error => { if (!cancelled) setLoginError(errorMessage(error)); });
       const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
-        if (!cancelled) setLoggedIn(Boolean(session));
+        // Supabase holds an auth lock while delivering this callback. Defer
+        // the RPC so verifying the allowlist cannot block sign-in.
+        window.setTimeout(() => { void syncAdminAccess(session); }, 0);
       });
       return () => { cancelled = true; listener.subscription.unsubscribe(); };
     } catch (error) { setLoginError(errorMessage(error)); }
@@ -168,9 +195,17 @@ export default function AdminPage() {
           email,
           password
         })
-        .then(({ error }) => {
+        .then(async ({ error }) => {
           if (error) {
             setLoginError(error.message);
+            return;
+          }
+
+          const client = createSupabaseBrowserClient();
+          const { data: isAdmin, error: adminError } = await client.rpc("is_admin");
+          if (adminError || !isAdmin) {
+            await client.auth.signOut();
+            setLoginError("Esta cuenta no tiene permisos de administrador.");
             return;
           }
 
@@ -272,12 +307,12 @@ export default function AdminPage() {
       });
       // Keep an incomplete new disk in draft, and reuse it if an image upload needs a retry.
       const saved = newSavedProductRef.current
-        ? await updateProductInSupabase(newSavedProductRef.current.id, { ...input, status: "draft" })
-        : await createProductInSupabase({ ...input, status: "draft" });
+        ? await updateProductInSupabase(newSavedProductRef.current.id, { ...input, status: "draft", visibleInMainList: false })
+        : await createProductInSupabase({ ...input, status: "draft", visibleInMainList: false });
       newSavedProductRef.current = saved;
       const result = await saveProductGallery(saved.id, newImages, (saved.images ?? []).map(image => image.storagePath));
       newSavedProductRef.current = { ...saved, images: result.images, photos: result.images.map(image => image.publicUrl) };
-      const completed = await updateProductInSupabase(saved.id, { status: input.status });
+      const completed = await updateProductInSupabase(saved.id, { status: input.status, visibleInMainList: input.visibleInMainList });
       setEditableProducts(current => [completed, ...current.filter(item => item.id !== completed.id)]);
       newSavedProductRef.current = null;
       setNewProduct(emptyProductForm);
@@ -376,9 +411,11 @@ export default function AdminPage() {
         <button type="button" aria-pressed={section === "products"} onClick={() => setSection("products")}>Discos</button>
         <button type="button" aria-pressed={section === "options"} onClick={() => setSection("options")}>Opciones del catálogo</button>
         <button type="button" aria-pressed={section === "homepage"} onClick={() => setSection("homepage")}>Página principal</button>
+        <button type="button" aria-pressed={section === "contact"} onClick={() => setSection("contact")}>Contacto</button>
       </nav>
       <div hidden={section !== "options"}><CatalogManager /></div>
       <div hidden={section !== "homepage"}><HomepageEditor showToast={showToast} /></div>
+      <div hidden={section !== "contact"}><ContactEditor showToast={showToast} /></div>
       <div hidden={section !== "products"}>
 
       <section className="admin-create-panel" aria-label="Nuevo disco">
@@ -503,6 +540,7 @@ function toProductEditorInput(product: Product): ProductEditorInput {
     price: Number(product.price) || 0,
     currency: product.currency,
     status: product.status,
+    visibleInMainList: product.visibleInMainList ?? product.status === "published",
     mediaCondition: product.mediaCondition,
     sleeveCondition: product.sleeveCondition,
     stock: Number(product.stock) || 0,

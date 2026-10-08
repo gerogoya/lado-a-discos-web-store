@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { localSupabase, localDbContainer, projectRoot, runSupabase } from "./local-supabase.mjs";
@@ -8,8 +8,9 @@ localSupabase();
 function sql(query) {
   return execFileSync("docker", ["exec", localDbContainer, "psql", "-U", "postgres", "-d", "postgres", "-At", "-v", "ON_ERROR_STOP=1", "-c", query], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 }).trim();
 }
-const version = "20260915000000";
-if (sql(`select count(*) from supabase_migrations.schema_migrations where version='${version}'`) === "1") {
+const versions = (await readdir(join(projectRoot, "supabase", "migrations"))).filter(name => /^\d+_.*\.sql$/.test(name)).map(name => name.split("_")[0]);
+const applied = new Set(sql("select version from supabase_migrations.schema_migrations").split(/\r?\n/));
+if (versions.every(version => applied.has(version))) {
   console.log("All local migrations are already applied.");
   process.exit(0);
 }
