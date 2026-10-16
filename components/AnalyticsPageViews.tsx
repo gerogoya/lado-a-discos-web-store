@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadingProductTitle, privacyTitle, storeTitle } from "@/lib/page-titles";
 
 const measurementId = "G-NWYWRTJ1DJ";
@@ -15,6 +15,7 @@ type AnalyticsWindow = Window & {
 export function AnalyticsPageViews({ accepted }: { accepted: boolean }) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
+  const [tagReady, setTagReady] = useState(false);
   const visit = useRef<{ url: string; sent: boolean; referrer: string } | null>(null);
   const initialized = useRef(false);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
@@ -65,7 +66,7 @@ export function AnalyticsPageViews({ accepted }: { accepted: boolean }) {
         if (document.title !== title) document.title = title;
       }
       const current = visit.current;
-      if (!accepted || !current || current.url !== location || current.sent) return;
+      if (!accepted || !tagReady || !current || current.url !== location || current.sent) return;
       current.sent = true;
       analytics.gtag?.("event", "page_view", {
         page_title: title, page_location: location, page_referrer: current.referrer
@@ -77,9 +78,10 @@ export function AnalyticsPageViews({ accepted }: { accepted: boolean }) {
       attributeFilter: ["data-product-slug", "data-page-title", "data-page-ready"] });
     update();
     return () => observer.disconnect();
-  }, [accepted, admin, path, search]);
+  }, [accepted, admin, path, search, tagReady]);
 
   return accepted && !admin
-    ? <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} strategy="afterInteractive" />
+    ? <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+        strategy="afterInteractive" onReady={() => setTagReady(true)} />
     : null;
 }

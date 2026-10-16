@@ -129,3 +129,19 @@ test("admin disables an already initialized tag and leaving resumes public views
   await page.goBack();
   await expect.poll(() => views(page)).toHaveLength(2);
 });
+
+test("a resolved product waits for the Google tag before queuing its first view", async ({ page }) => {
+  await setup(page, "accepted");
+  let releaseTag!: () => void;
+  const holdTag = new Promise<void>(resolve => { releaseTag = resolve; });
+  await page.route("https://www.googletagmanager.com/gtag/js?**", async route => {
+    await holdTag;
+    await route.fulfill({ contentType: "application/javascript", body: "" });
+  });
+  await page.goto(legacy, { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveTitle("Saxon - Strong Arm Metal | LADO A DISCOS");
+  expect(await views(page)).toHaveLength(0);
+  releaseTag();
+  await expect.poll(() => views(page)).toHaveLength(1);
+  expect((await views(page))[0].page_title).toBe("Saxon - Strong Arm Metal | LADO A DISCOS");
+});

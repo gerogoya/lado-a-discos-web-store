@@ -1,6 +1,6 @@
 # Sprint 6 — catálogo y disponibilidad
 
-## Fix de títulos y vistas GA4 — implementación local, sin publicar
+## Fix de títulos y vistas GA4
 
 - Las dos rutas de producto resuelven Supabase mediante `ProductLookup`. La ficha, el título del navegador y `page_title` usan el mismo producto. El nombre usa `title` (igual que la ficha) y, si está vacío, `album`.
 - Se mantiene la exportación estática, los slugs existentes y los metadatos estáticos previos de las rutas antiguas. Su título inicial puede contener los datos originales; la ficha y `page_title` se corrigen en el navegador al resolver Supabase. La ruta nueva mantiene metadatos genéricos. No se pretende resolver SEO/OG dinámico con este cambio.
@@ -21,7 +21,7 @@ Los títulos históricos no se renombran. `view_item`, ecommerce y una tabla de 
 
 Fuentes: https://developers.google.com/analytics/devguides/collection/ga4/views y https://developers.google.com/analytics/devguides/collection/ga4/single-page-applications.
 
-Verificación local del fix: 10 pruebas de navegador pasaron tanto en desarrollo como sobre la exportación estática, con respuestas de producto simuladas y la carga de gtag interceptada. `npx.cmd tsc --noEmit` y la compilación de GitHub Pages completaron correctamente. Las pruebas inspeccionaron la cola de gtag y `document.title`; no enviaron datos a la propiedad real.
+El despliegue inicial (PR #11) reveló una carrera en la entrada directa: el `page_view` podía quedar en la cola antes de que terminara de cargar la etiqueta. La corrección espera `Script.onReady` antes del primer envío. En una exportación estática local, con la etiqueta real y los envíos a GA4 interceptados, las cuatro entradas directas a una ruta antigua y las dos entradas directas a una ruta nueva enviaron exactamente una vista con título y URL correctos. Las 11 pruebas de navegador y la compilación de GitHub Pages pasaron. Queda repetir la comprobación en producción tras publicar esta corrección.
 
 ## Incluido
 
