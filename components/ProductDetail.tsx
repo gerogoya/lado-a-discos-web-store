@@ -8,59 +8,23 @@ import { useEffect, useMemo, useState } from "react";
 import { ProductImage } from "@/components/ProductImage";
 import { ProductGallery } from "@/components/ProductGallery";
 import { publicAsset } from "@/lib/assets";
-import { readProductOverrides } from "@/lib/product-storage";
 import { buildWhatsAppUrl, storeConfig } from "@/lib/store-config";
 import { addCartItem, readCart, type CartItem } from "@/lib/cart";
 import { formatCurrency } from "@/lib/format";
-import { getProductBySlugFromSupabase } from "@/lib/supabase/products";
+import { productDisplayName } from "@/lib/page-titles";
 import type { Product, ProductStatus } from "@/types/product";
 
 export function ProductDetail({ product: initialProduct }: { product: Product }) {
   const contact = useContact();
   const [origin, setOrigin] = useState<string>();
-  const [product, setProduct] = useState<Product>(initialProduct);
+  const product = initialProduct;
+  const status = product.status;
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [status, setStatus] = useState<ProductStatus>(initialProduct.status);
 
   useEffect(() => {
-    let cancelled = false;
     setOrigin(window.location.origin);
-    const savedInventory = window.localStorage.getItem(storeConfig.inventoryStorageKey);
-    const productOverrides = readProductOverrides();
-    const savedProduct = productOverrides[initialProduct.id];
-
     setCart(readCart());
-
-    if (savedProduct) {
-      setProduct(savedProduct);
-    }
-
-    if (savedInventory) {
-      const inventory = JSON.parse(savedInventory) as Record<string, ProductStatus>;
-      setStatus(savedProduct?.status ?? inventory[initialProduct.id] ?? initialProduct.status);
-    } else {
-      setStatus(savedProduct?.status ?? initialProduct.status);
-    }
-
-    async function loadSupabaseProduct() {
-      try {
-        const supabaseProduct = await getProductBySlugFromSupabase(initialProduct.slug);
-
-        if (!cancelled && supabaseProduct) {
-          setProduct(supabaseProduct);
-          setStatus(supabaseProduct.status);
-        }
-      } catch (error) {
-        console.warn("Using local product detail fallback.", error);
-      }
-    }
-
-    loadSupabaseProduct();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialProduct]);
+  }, []);
 
   const isInCart = cart.some((item) => item.productId === product.id);
   const canAddToCart = status === "published";
@@ -100,7 +64,7 @@ export function ProductDetail({ product: initialProduct }: { product: Product })
 
         <div className="detail-info">
           <p className="eyebrow">{[product.genre, product.country, product.year].filter(Boolean).join(" · ")}</p>
-          <h1>{product.title}</h1>
+          <h1>{productDisplayName(product)}</h1>
           <p className="detail-artist">{product.artist}</p>
           <strong className="detail-price">{formatCurrency(product.price, product.currency)}</strong>
 

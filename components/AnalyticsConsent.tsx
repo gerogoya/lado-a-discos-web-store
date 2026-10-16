@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { AnalyticsPageViews } from "./AnalyticsPageViews";
 
-const measurementId = "G-NWYWRTJ1DJ";
 export const analyticsConsentKey = "lado-a-discos-analytics-consent";
 type Consent = "accepted" | "declined";
 
@@ -33,7 +32,7 @@ export function AnalyticsConsent() {
     }
   }, []);
 
-  if (pathname.startsWith("/admin")) return null;
+  const admin = pathname.startsWith("/admin");
 
   function choose(value: Consent) {
     try {
@@ -46,19 +45,9 @@ export function AnalyticsConsent() {
 
   return (
     <>
-      {consent === "accepted" && (
-        <>
-          <Script src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} strategy="afterInteractive" />
-          <Script id="google-analytics" strategy="afterInteractive">
-            {`window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', '${measurementId}');`}
-          </Script>
-        </>
-      )}
+      <Suspense fallback={null}><AnalyticsPageViews accepted={consent === "accepted"} /></Suspense>
 
-      {consent === null && (
+      {!admin && consent === null && (
         <div ref={banner} className="analytics-consent" role="region" aria-label="Preferencias de privacidad">
           <div className="analytics-consent-inner">
           <p>Usamos Google Analytics para conocer las visitas al sitio. Solo se activa si aceptás. <Link href="/privacidad">Más información</Link>.</p>
@@ -70,10 +59,10 @@ export function AnalyticsConsent() {
         </div>
       )}
 
-      <footer className="site-footer site-shell">
+      {!admin && <footer className="site-footer site-shell">
         <span>LADO A DISCOS · Sitio desarrollado por Greyline Studio</span>
         <Link className="privacy-link" href="/privacidad">Preferencias de privacidad</Link>
-      </footer>
+      </footer>}
     </>
   );
 }

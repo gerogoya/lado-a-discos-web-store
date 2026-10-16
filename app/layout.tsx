@@ -4,6 +4,7 @@ import { AnalyticsConsent } from "@/components/AnalyticsConsent";
 import { ContactProvider } from "@/components/ContactProvider";
 import { publicAsset } from "@/lib/assets";
 import "./globals.css";
+import { storeTitle } from "@/lib/page-titles";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.ladoadiscos.com"),
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: publicAsset("/brand/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }]
   },
-  title: "LADO A DISCOS | Vinilos usados y nuevos",
+  title: storeTitle,
   description: "Tienda argentina de vinilos usados y nuevos con discos probados, clasificados y listos para reservar por WhatsApp.",
   openGraph: {
     title: "LADO A DISCOS",

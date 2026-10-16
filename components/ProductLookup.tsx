@@ -7,9 +7,14 @@ import { ProductDetail } from "@/components/ProductDetail";
 import { ProductImage } from "@/components/ProductImage";
 import { publicAsset } from "@/lib/assets";
 import { getProductBySlugFromSupabase } from "@/lib/supabase/products";
+import { productPageTitle } from "@/lib/page-titles";
 import type { Product } from "@/types/product";
 
 export function ProductLookup({ slug }: { slug?: string }) {
+  return <ResolvedProduct key={slug || "missing"} slug={slug} />;
+}
+
+function ResolvedProduct({ slug }: { slug?: string }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "missing" | "error">(slug ? "loading" : "missing");
 
@@ -32,7 +37,7 @@ export function ProductLookup({ slug }: { slug?: string }) {
           return;
         }
 
-        if (!supabaseProduct) {
+        if (!supabaseProduct || supabaseProduct.status === "draft") {
           setStatus("missing");
           return;
         }
@@ -55,12 +60,22 @@ export function ProductLookup({ slug }: { slug?: string }) {
     };
   }, [slug]);
 
+  const title = status === "ready" && product
+    ? productPageTitle(product)
+    : getTitle(status) + " | LADO A DISCOS";
+
+  useEffect(() => { document.title = title; }, [title]);
+
+  const marker = <span hidden data-product-slug={slug || ""}
+    data-page-title={title} data-page-ready={status !== "loading"} />;
+
   if (status === "ready" && product) {
-    return <ProductDetail product={product} />;
+    return <>{marker}<ProductDetail key={product.id} product={product} /></>;
   }
 
   return (
     <main className="site-shell product-page">
+      {marker}
       <header className="topbar compact">
         <Link className="brand" href="/">
           <ProductImage src={publicAsset("/brand/lado-a-discos-logo.jpg")} alt="LADO A DISCOS" width={52} height={52} priority />

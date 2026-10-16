@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { PrivacyPreferences } from "@/components/PrivacyPreferences";
 import { PrivacyContact } from "@/components/PrivacyContact";
+import { privacyTitle } from "@/lib/page-titles";
 
 export const metadata = {
-  title: "Privacidad | LADO A DISCOS",
+  title: privacyTitle,
   description: "Información sobre Google Analytics y las preferencias de privacidad de LADO A DISCOS."
 };
 
